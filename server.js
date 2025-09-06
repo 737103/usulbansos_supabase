@@ -597,6 +597,31 @@ app.post('/api/sanggahan', authenticateToken, upload.single('bukti_sanggahan'), 
     }
 });
 
+// Get user's sanggahan
+app.get('/api/sanggahan', authenticateToken, (req, res) => {
+    const userId = req.user.id;
+
+    console.log('Getting sanggahan for user:', userId);
+
+    db.all(`
+        SELECT s.*, p.nama AS pelapor_nama, p.nik AS pelapor_nik,
+               t.nama AS target_nama, t.nik AS target_nik
+        FROM sanggahan s
+        LEFT JOIN users p ON s.pelapor_user_id = p.id
+        LEFT JOIN users t ON s.target_user_id = t.id
+        WHERE s.pelapor_user_id = ?
+        ORDER BY s.created_at DESC
+    `, [userId], (err, rows) => {
+        if (err) {
+            console.error('Error getting sanggahan:', err);
+            return res.status(500).json({ message: 'Server error' });
+        }
+
+        console.log('Sanggahan data for user:', rows);
+        res.json(rows);
+    });
+});
+
 // Get all sanggahan (admin)
 app.get('/api/admin/sanggahan', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
@@ -620,15 +645,62 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Akses ditolak' });
     }
+    
     const { status } = req.body;
     const id = req.params.id;
+    
+    console.log('Update sanggahan status request:', { id, status, userId: req.user.id });
+    
     if (!['pending', 'accepted', 'rejected'].includes(status)) {
         return res.status(400).json({ message: 'Status tidak valid' });
     }
-    db.run('UPDATE sanggahan SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], function(err) {
-        if (err) return res.status(500).json({ message: 'Server error' });
-        if (this.changes === 0) return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
-        res.json({ message: 'Status sanggahan berhasil diperbarui' });
+    
+    // First, get the sanggahan details
+    db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
+        if (err) {
+            console.error('Error getting sanggahan:', err);
+            return res.status(500).json({ message: 'Server error' });
+        }
+        
+        if (!sanggahan) {
+            return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+        }
+        
+        console.log('Sanggahan details:', sanggahan);
+        
+        // Update sanggahan status
+        db.run('UPDATE sanggahan SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], function(err) {
+            if (err) {
+                console.error('Error updating sanggahan status:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+            }
+            
+            console.log('Sanggahan status updated successfully');
+            
+            // If sanggahan is accepted, update the target user's bantuan status to approved
+            if (status === 'accepted' && sanggahan.target_user_id) {
+                console.log('Sanggahan accepted, updating target user bantuan status');
+                
+                // Update all pending bantuan for the target user to approved
+                db.run(`
+                    UPDATE bantuan_sosial 
+                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
+                    WHERE user_id = ? AND status = 'pending'
+                `, [sanggahan.target_user_id], function(err) {
+                    if (err) {
+                        console.error('Error updating target user bantuan status:', err);
+                    } else {
+                        console.log('Target user bantuan status updated:', this.changes, 'records');
+                    }
+                });
+            }
+            
+            res.json({ message: 'Status sanggahan berhasil diperbarui' });
+        });
     });
 });
 

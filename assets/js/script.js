@@ -523,29 +523,71 @@ async function showKelolaSanggahan() {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Tipe</th>
-                            <th>Pelapor (NIK)</th>
-                            <th>Terhadap (NIK)</th>
-                            <th>Alasan</th>
+                            <th>Tipe Sanggahan</th>
+                            <th>Pelapor</th>
+                            <th>Terhadap</th>
+                            <th>Alasan Sanggahan</th>
                             <th>Status</th>
                             <th>Tanggal</th>
+                            <th>Bukti Pendukung</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${list.length === 0 ? `<tr><td colspan="7">Belum ada sanggahan.</td></tr>` : list.map(s => `
+                        ${list.length === 0 ? `<tr><td colspan="8">Belum ada sanggahan.</td></tr>` : list.map(s => `
                             <tr>
-                                <td>${s.tipe === 'self' ? 'Sanggahan Diri' : 'Sanggahan Warga Lain'}</td>
-                                <td>${s.pelapor_nama || '-'} (${s.pelapor_nik || '-'})</td>
-                                <td>${s.target_nama || '-'} (${s.target_nik || '-'})</td>
-                                <td>${s.alasan}</td>
-                                <td><span class="status ${s.status === 'pending' ? 'pending' : (s.status === 'accepted' ? 'verified' : 'rejected')}">${s.status}</span></td>
+                                <td>
+                                    <span class="sanggahan-type ${s.tipe === 'diri_sendiri' ? 'self' : 'other'}">
+                                        ${s.tipe === 'diri_sendiri' ? 'Sanggah Diri Sendiri' : 'Sanggah Warga Lain'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="user-info">
+                                        <strong>${s.pelapor_nama || '-'}</strong><br>
+                                        <small>NIK: ${s.pelapor_nik || '-'}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="user-info">
+                                        ${s.tipe === 'diri_sendiri' ? 
+                                            '<strong>Diri Sendiri</strong>' : 
+                                            `<strong>${s.target_nama || '-'}</strong><br><small>NIK: ${s.target_nik || '-'}</small>`
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="alasan-text" title="${s.alasan}">
+                                        ${s.alasan.length > 50 ? s.alasan.substring(0, 50) + '...' : s.alasan}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status ${getSanggahanStatusClass(s.status)}">
+                                        ${getSanggahanStatusLabel(s.status)}
+                                    </span>
+                                </td>
                                 <td>${new Date(s.created_at).toLocaleDateString('id-ID')}</td>
                                 <td>
-                                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                                        <button class="btn-sm btn-success" onclick="updateSanggahanStatus(${s.id}, 'accepted')">Terima</button>
-                                        <button class="btn-sm btn-danger" onclick="updateSanggahanStatus(${s.id}, 'rejected')">Tolak</button>
-                                        <button class="btn-sm btn-warning" onclick="updateSanggahanStatus(${s.id}, 'pending')">Proses</button>
+                                    ${s.bukti_file ? 
+                                        `<a href="/uploads/${s.bukti_file}" target="_blank" class="btn-sm btn-primary">
+                                            <i class="fas fa-download"></i> Lihat Bukti
+                                        </a>` : 
+                                        '<span class="no-docs">Tidak ada</span>'
+                                    }
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        ${s.status === 'pending' ? `
+                                            <button class="btn-sm btn-success" onclick="updateSanggahanStatus(${s.id}, 'accepted')" title="Terima sanggahan">
+                                                <i class="fas fa-check"></i> Terima
+                                            </button>
+                                            <button class="btn-sm btn-danger" onclick="updateSanggahanStatus(${s.id}, 'rejected')" title="Tolak sanggahan">
+                                                <i class="fas fa-times"></i> Tolak
+                                            </button>
+                                        ` : `
+                                            <button class="btn-sm btn-warning" onclick="updateSanggahanStatus(${s.id}, 'pending')" title="Set status proses">
+                                                <i class="fas fa-clock"></i> Proses
+                                            </button>
+                                        `}
                                     </div>
                                 </td>
                             </tr>
@@ -623,6 +665,14 @@ function showWargaDashboard() {
                         <p>Sanggah diri sendiri atau warga lain yang tidak layak</p>
                         <button class="btn-primary" onclick="showSanggahanForm()">
                             <i class="fas fa-exclamation-triangle"></i> Ajukan Sanggahan
+                        </button>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-list-alt"></i> Riwayat Sanggahan</h3>
+                        <p>Lihat status sanggahan yang telah Anda ajukan</p>
+                        <button class="btn-primary" onclick="showRiwayatSanggahan()">
+                            <i class="fas fa-list-alt"></i> Lihat Riwayat
                         </button>
                     </div>
                     
@@ -1876,6 +1926,113 @@ function getStatusClass(status) {
     return classes[status] || 'pending';
 }
 
+// Show Riwayat Sanggahan
+async function showRiwayatSanggahan() {
+    const content = document.getElementById('warga-content');
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/sanggahan`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Gagal mengambil riwayat sanggahan');
+        }
+
+        const sanggahanList = await response.json();
+        
+        if (sanggahanList.length === 0) {
+            content.innerHTML = `
+                <div class="dashboard-card">
+                    <h3>Riwayat Sanggahan</h3>
+                    <p>Belum ada sanggahan yang diajukan.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        content.innerHTML = `
+            <div class="table-container">
+                <h3>Riwayat Sanggahan</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Jenis Sanggahan</th>
+                            <th>Terhadap</th>
+                            <th>Alasan Sanggahan</th>
+                            <th>Status</th>
+                            <th>Tanggal Ajuan</th>
+                            <th>Bukti Pendukung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sanggahanList.map(sanggahan => `
+                            <tr>
+                                <td>
+                                    <span class="sanggahan-type ${sanggahan.tipe === 'diri_sendiri' ? 'self' : 'other'}">
+                                        ${sanggahan.tipe === 'diri_sendiri' ? 'Sanggah Diri Sendiri' : 'Sanggah Warga Lain'}
+                                    </span>
+                                </td>
+                                <td>
+                                    ${sanggahan.tipe === 'diri_sendiri' ? 
+                                        'Diri Sendiri' : 
+                                        (sanggahan.target_nama ? `${sanggahan.target_nama} (${sanggahan.target_nik})` : 'Warga Lain')
+                                    }
+                                </td>
+                                <td>${sanggahan.alasan}</td>
+                                <td>
+                                    <span class="status ${getSanggahanStatusClass(sanggahan.status)}">
+                                        ${getSanggahanStatusLabel(sanggahan.status)}
+                                    </span>
+                                </td>
+                                <td>${new Date(sanggahan.created_at).toLocaleDateString('id-ID')}</td>
+                                <td>
+                                    ${sanggahan.bukti_file ? 
+                                        `<a href="/uploads/${sanggahan.bukti_file}" target="_blank" class="btn-sm btn-primary">
+                                            <i class="fas fa-download"></i> Lihat Bukti
+                                        </a>` : 
+                                        'Tidak ada'
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading riwayat sanggahan:', error);
+        content.innerHTML = `
+            <div class="dashboard-card">
+                <h3>Error</h3>
+                <p>Gagal memuat riwayat sanggahan. Silakan coba lagi.</p>
+            </div>
+        `;
+    }
+}
+
+// Helper functions for sanggahan status
+function getSanggahanStatusLabel(status) {
+    const labels = {
+        'pending': 'Menunggu',
+        'accepted': 'Diterima',
+        'rejected': 'Ditolak'
+    };
+    return labels[status] || status;
+}
+
+function getSanggahanStatusClass(status) {
+    const classes = {
+        'pending': 'pending',
+        'accepted': 'verified',
+        'rejected': 'rejected'
+    };
+    return classes[status] || 'pending';
+}
+
 // Show Profil
 function showProfil() {
     const content = document.getElementById('warga-content');
@@ -2151,6 +2308,74 @@ style.textContent = `
     .status.rejected {
         background: #f8d7da;
         color: #721c24;
+    }
+    .sanggahan-type {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .sanggahan-type.self {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    .sanggahan-type.other {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+    .user-info {
+        line-height: 1.4;
+    }
+    .user-info strong {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .user-info small {
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+    .alasan-text {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+    }
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: all 0.3s ease;
+    }
+    .btn-sm.btn-success {
+        background: #28a745;
+        color: white;
+    }
+    .btn-sm.btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+    .btn-sm.btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+    .btn-sm.btn-primary {
+        background: #007bff;
+        color: white;
+    }
+    .btn-sm:hover {
+        opacity: 0.8;
+        transform: translateY(-1px);
     }
 `;
 document.head.appendChild(style);
