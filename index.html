@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#667eea">
+    <title>Aplikasi Usul Bansos - Kelurahan Bara Baraya Selatan</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons for different devices -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <i class="fas fa-building"></i>
+                    <span>Kelurahan Bara Baraya Selatan</span>
+                </div>
+                <div class="nav-menu" id="nav-menu">
+                    <a href="#home" class="nav-link">Beranda</a>
+                    <a href="#about" class="nav-link">Tentang</a>
+                    <a href="#services" class="nav-link">Layanan</a>
+                    <a href="#contact" class="nav-link">Kontak</a>
+                    <button class="btn-login" onclick="showLoginModal()">Masuk</button>
+                </div>
+                <div class="hamburger" id="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Aplikasi Usul Bansos</h1>
+                <h2 class="hero-subtitle">Kelurahan Bara Baraya Selatan</h2>
+                <p class="hero-description">
+                    Platform digital untuk mengajukan bantuan sosial dengan mudah, 
+                    cepat, dan transparan. Daftar sekarang dan ajukan bantuan sosial Anda.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn-primary" onclick="showRegisterModal()">
+                        <i class="fas fa-user-plus"></i>
+                        Daftar Sekarang
+                    </button>
+                    <button class="btn-secondary" onclick="showLoginModal()">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Masuk
+                    </button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="hero-card">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <h3>Bantuan Sosial</h3>
+                    <p>Dapatkan bantuan sosial yang tepat sasaran</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="section-header">
+                <h2>Tentang Aplikasi</h2>
+                <p>Platform digital yang memudahkan warga dalam mengajukan bantuan sosial</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-card">
+                    <div class="about-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Akses Mudah</h3>
+                    <p>Dapat diakses melalui smartphone, tablet, atau komputer</p>
+                </div>
+                <div class="about-card">
+                    <div class="about-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Aman & Terpercaya</h3>
+                    <p>Data pribadi terlindungi dengan sistem keamanan terbaik</p>
+                </div>
+                <div class="about-card">
+                    <div class="about-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Proses Cepat</h3>
+                    <p>Verifikasi dan persetujuan bantuan sosial yang lebih efisien</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services">
+        <div class="container">
+            <div class="section-header">
+                <h2>Layanan Kami</h2>
+                <p>Berbagai jenis bantuan sosial yang dapat diajukan</p>
+            </div>
+            <div class="services-grid">
+                <div class="service-card">
+                    <i class="fas fa-utensils"></i>
+                    <h3>Bantuan Pangan</h3>
+                    <p>Bantuan sembako dan kebutuhan pokok</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-home"></i>
+                    <h3>Bantuan Perumahan</h3>
+                    <p>Bantuan renovasi dan perbaikan rumah</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Bantuan Pendidikan</h3>
+                    <p>Bantuan biaya pendidikan dan beasiswa</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-heartbeat"></i>
+                    <h3>Bantuan Kesehatan</h3>
+                    <p>Bantuan biaya pengobatan dan kesehatan</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <div class="section-header">
+                <h2>Kontak Kami</h2>
+                <p>Hubungi kami untuk informasi lebih lanjut</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <h4>Alamat</h4>
+                            <p>Jl. Bara Baraya Selatan No. 123<br>Makassar, Sulawesi Selatan</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <div>
+                            <h4>Telepon</h4>
+                            <p>+62 411 1234567</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <h4>Email</h4>
+                            <p>info@barabarayaselatan.go.id</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="contact-form">
+                    <form>
+                        <div class="form-group">
+                            <input type="text" placeholder="Nama Lengkap" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" placeholder="Email" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea placeholder="Pesan" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Kirim Pesan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Kelurahan Bara Baraya Selatan</h3>
+                    <p>Melayani masyarakat dengan sepenuh hati untuk kesejahteraan bersama.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Link Cepat</h4>
+                    <ul>
+                        <li><a href="#home">Beranda</a></li>
+                        <li><a href="#about">Tentang</a></li>
+                        <li><a href="#services">Layanan</a></li>
+                        <li><a href="#contact">Kontak</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Ikuti Kami</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Kelurahan Bara Baraya Selatan. Semua hak dilindungi.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Masuk ke Aplikasi</h2>
+                <span class="close" onclick="closeModal('loginModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="login-tabs">
+                    <button class="tab-btn active" onclick="switchTab('admin')">Admin Kelurahan</button>
+                    <button class="tab-btn" onclick="switchTab('warga')">Warga</button>
+                </div>
+                
+                <!-- Admin Login Form -->
+                <div id="adminLogin" class="login-form active">
+                    <form id="adminForm">
+                        <div class="form-group">
+                            <label for="adminUsername">Username</label>
+                            <input type="text" id="adminUsername" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminPassword">Password</label>
+                            <input type="password" id="adminPassword" name="password" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Masuk</button>
+                    </form>
+                </div>
+
+                <!-- Warga Login Form -->
+                <div id="wargaLogin" class="login-form">
+                    <form id="wargaForm">
+                        <div class="form-group">
+                            <label for="wargaNik">NIK</label>
+                            <input type="text" id="wargaNik" name="nik" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="wargaPassword">Password</label>
+                            <input type="password" id="wargaPassword" name="password" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Masuk</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Daftar Akun Warga</h2>
+                <span class="close" onclick="closeModal('registerModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="regNik">NIK</label>
+                        <input type="text" id="regNik" name="nik" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regKK">No. Kartu Keluarga (16 digit)</label>
+                        <input type="text" id="regKK" name="kk" inputmode="numeric" maxlength="16" minlength="16" required placeholder="Masukkan 16 digit No. KK">
+                    </div>
+                    <div class="form-group">
+                        <label for="regNama">Nama Lengkap</label>
+                        <input type="text" id="regNama" name="nama" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email</label>
+                        <input type="email" id="regEmail" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPhone">No. Telepon</label>
+                        <input type="tel" id="regPhone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regRT">RT (diawali 00, 3-4 digit)</label>
+                        <input type="text" id="regRT" name="rt" inputmode="numeric" maxlength="4" minlength="3" placeholder="Contoh: 001 atau 0012" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regRW">RW (diawali 00, 3-4 digit)</label>
+                        <input type="text" id="regRW" name="rw" inputmode="numeric" maxlength="4" minlength="3" placeholder="Contoh: 001 atau 0012" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regAlamat">Alamat</label>
+                        <textarea id="regAlamat" name="alamat" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Password</label>
+                        <input type="password" id="regPassword" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regConfirmPassword">Konfirmasi Password</label>
+                        <input type="password" id="regConfirmPassword" name="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Daftar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/script.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed');
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

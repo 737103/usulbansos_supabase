@@ -1,0 +1,9 @@
+@echo off
+echo Starting Aplikasi Usul Bansos Kelurahan Bara Baraya Selatan...
+echo.
+echo Installing dependencies...
+npm install
+echo.
+echo Starting server...
+npm start
+pause
