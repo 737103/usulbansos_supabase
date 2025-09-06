@@ -82,6 +82,12 @@ function setupEventListeners() {
 
     if (registerForm) {
         registerForm.addEventListener('submit', handleRegister);
+        
+        // Add real-time NIK validation
+        const nikInput = document.getElementById('regNik');
+        if (nikInput) {
+            nikInput.addEventListener('blur', validateNIK);
+        }
     }
 
     // Close modals when clicking outside
@@ -265,6 +271,74 @@ async function handleWargaLogin(e) {
     }
 }
 
+// Validate NIK in real-time
+async function validateNIK(e) {
+    const nik = e.target.value.trim();
+    
+    // Clear previous validation messages
+    const existingMessage = e.target.parentNode.querySelector('.nik-validation-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // Only validate if NIK is 16 digits
+    if (nik.length === 16 && /^\d{16}$/.test(nik)) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/warga/check-nik`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nik })
+            });
+            
+            const data = await response.json();
+            
+            // Create validation message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'nik-validation-message';
+            
+            if (response.ok) {
+                // NIK is available
+                messageDiv.style.color = '#28a745';
+                messageDiv.innerHTML = '<i class="fas fa-check"></i> NIK tersedia untuk pendaftaran';
+                e.target.style.borderColor = '#28a745';
+            } else {
+                // NIK already exists
+                if (data.code === 'NIK_VERIFIED_EXISTS') {
+                    messageDiv.style.color = '#dc3545';
+                    messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> NIK sudah terdaftar dan diverifikasi. Hubungi admin kelurahan.';
+                    e.target.style.borderColor = '#dc3545';
+                } else if (data.code === 'NIK_PENDING_VERIFICATION') {
+                    messageDiv.style.color = '#ffc107';
+                    messageDiv.innerHTML = '<i class="fas fa-clock"></i> NIK sudah terdaftar, menunggu verifikasi admin.';
+                    e.target.style.borderColor = '#ffc107';
+                } else {
+                    messageDiv.style.color = '#dc3545';
+                    messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (data.message || 'NIK tidak tersedia');
+                    e.target.style.borderColor = '#dc3545';
+                }
+            }
+            
+            e.target.parentNode.appendChild(messageDiv);
+            
+        } catch (error) {
+            console.error('NIK validation error:', error);
+        }
+    } else if (nik.length > 0) {
+        // Invalid NIK format
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'nik-validation-message';
+        messageDiv.style.color = '#dc3545';
+        messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Format NIK harus 16 digit angka';
+        e.target.style.borderColor = '#dc3545';
+        e.target.parentNode.appendChild(messageDiv);
+    } else {
+        // Clear validation styling
+        e.target.style.borderColor = '';
+    }
+}
+
 // Handle Register
 async function handleRegister(e) {
     e.preventDefault();
@@ -347,7 +421,15 @@ async function handleRegister(e) {
             e.target.reset();
         } else {
             console.log('Registration failed:', data.message);
-            showMessage(data.message || 'Pendaftaran gagal!', 'error');
+            
+            // Handle specific error codes for NIK validation
+            if (data.code === 'NIK_VERIFIED_EXISTS') {
+                showMessage('NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.', 'error');
+            } else if (data.code === 'NIK_PENDING_VERIFICATION') {
+                showMessage('NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.', 'warning');
+            } else {
+                showMessage(data.message || 'Pendaftaran gagal!', 'error');
+            }
         }
     } catch (error) {
         console.error('Register error:', error);
@@ -1974,6 +2056,19 @@ style.textContent = `
     .btn-logout:hover {
         background: white;
         color: #667eea;
+    }
+    .nik-validation-message {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        background: rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .nik-validation-message i {
+        font-size: 0.875rem;
     }
 `;
 document.head.appendChild(style);

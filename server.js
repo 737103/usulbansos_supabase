@@ -250,13 +250,23 @@ app.post('/api/warga/register', (req, res) => {
     }
 
     // Check if NIK already exists (prevent re-register)
-    db.get('SELECT id FROM users WHERE nik = ?', [nik], (err, existingUser) => {
+    db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
         if (err) {
             return res.status(500).json({ message: 'Server error' });
         }
 
         if (existingUser) {
-            return res.status(400).json({ message: 'NIK sudah terdaftar. Hubungi admin untuk penghapusan jika perlu daftar ulang.' });
+            if (existingUser.verified === 1) {
+                return res.status(400).json({ 
+                    message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.',
+                    code: 'NIK_VERIFIED_EXISTS'
+                });
+            } else {
+                return res.status(400).json({ 
+                    message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.',
+                    code: 'NIK_PENDING_VERIFICATION'
+                });
+            }
         }
 
         // Check if email already exists
@@ -286,6 +296,51 @@ app.post('/api/warga/register', (req, res) => {
                     });
                 }
             );
+        });
+    });
+});
+
+// Check NIK availability
+app.post('/api/warga/check-nik', (req, res) => {
+    const { nik } = req.body;
+
+    if (!nik) {
+        return res.status(400).json({ message: 'NIK wajib diisi' });
+    }
+
+    // Validate NIK format
+    const isSixteenDigits = /^\d{16}$/;
+    if (!isSixteenDigits.test(nik)) {
+        return res.status(400).json({ 
+            message: 'Format NIK harus 16 digit',
+            code: 'INVALID_NIK_FORMAT'
+        });
+    }
+
+    // Check if NIK already exists
+    db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
+        if (err) {
+            return res.status(500).json({ message: 'Server error' });
+        }
+
+        if (existingUser) {
+            if (existingUser.verified === 1) {
+                return res.status(400).json({ 
+                    message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.',
+                    code: 'NIK_VERIFIED_EXISTS'
+                });
+            } else {
+                return res.status(400).json({ 
+                    message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.',
+                    code: 'NIK_PENDING_VERIFICATION'
+                });
+            }
+        }
+
+        // NIK is available
+        res.json({ 
+            message: 'NIK tersedia untuk pendaftaran',
+            code: 'NIK_AVAILABLE'
         });
     });
 });
