@@ -636,14 +636,18 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
 app.get('/api/bantuan', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
+    console.log('Getting bantuan for user:', userId);
+
     db.all(
         'SELECT * FROM bantuan_sosial WHERE user_id = ? ORDER BY created_at DESC',
         [userId],
         (err, bantuan) => {
             if (err) {
+                console.error('Error getting bantuan:', err);
                 return res.status(500).json({ message: 'Server error' });
             }
 
+            console.log('Bantuan data for user:', bantuan);
             res.json(bantuan);
         }
     );

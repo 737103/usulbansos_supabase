@@ -1797,6 +1797,7 @@ async function showRiwayatAjuan() {
                             <th>Alasan Pengajuan</th>
                             <th>Status</th>
                             <th>Tanggal Ajuan</th>
+                            <th>Alasan Penolakan</th>
                             <th>Dokumen</th>
                         </tr>
                     </thead>
@@ -1812,12 +1813,22 @@ async function showRiwayatAjuan() {
                                 </td>
                                 <td>${new Date(bantuan.created_at).toLocaleDateString('id-ID')}</td>
                                 <td>
-                                    ${bantuan.dokumen ? 
-                                        `<a href="/uploads/${bantuan.dokumen}" target="_blank" class="btn-sm btn-primary">
-                                            <i class="fas fa-download"></i> Download
-                                        </a>` : 
-                                        'Tidak ada'
+                                    ${bantuan.status === 'rejected' && bantuan.rejection_reason ? 
+                                        `<span class="rejection-reason" title="${bantuan.rejection_reason}">
+                                            <i class="fas fa-exclamation-triangle"></i> ${bantuan.rejection_reason}
+                                        </span>` : 
+                                        '-'
                                     }
+                                </td>
+                                <td>
+                                    <div class="document-buttons">
+                                        ${bantuan.foto_kk ? `<a href="/uploads/${bantuan.foto_kk}" target="_blank" class="doc-btn doc-kk"><i class="fas fa-file-image"></i> KK</a>` : ''}
+                                        ${bantuan.foto_rumah_depan ? `<a href="/uploads/${bantuan.foto_rumah_depan}" target="_blank" class="doc-btn doc-rumah"><i class="fas fa-home"></i> Depan</a>` : ''}
+                                        ${bantuan.foto_rumah_dalam ? `<a href="/uploads/${bantuan.foto_rumah_dalam}" target="_blank" class="doc-btn doc-rumah"><i class="fas fa-door-open"></i> Dalam</a>` : ''}
+                                        ${bantuan.foto_selfie_ktp ? `<a href="/uploads/${bantuan.foto_selfie_ktp}" target="_blank" class="doc-btn doc-selfie"><i class="fas fa-user"></i> Selfie</a>` : ''}
+                                        ${bantuan.gps_latitude && bantuan.gps_longitude ? `<a href="https://www.google.com/maps?q=${bantuan.gps_latitude},${bantuan.gps_longitude}" target="_blank" class="doc-btn doc-gps"><i class="fas fa-map-marker-alt"></i> GPS</a>` : ''}
+                                        ${!bantuan.foto_kk && !bantuan.foto_rumah_depan && !bantuan.foto_rumah_dalam && !bantuan.foto_selfie_ktp && !bantuan.gps_latitude ? '<span class="no-docs">Tidak ada</span>' : ''}
+                                    </div>
                                 </td>
                             </tr>
                         `).join('')}
@@ -2090,6 +2101,56 @@ style.textContent = `
     }
     .nik-validation-message i {
         font-size: 0.875rem;
+    }
+    .rejection-reason {
+        color: #dc3545;
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+        background: #f8d7da;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .rejection-reason i {
+        color: #dc3545;
+    }
+    .document-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .doc-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    .doc-btn.doc-kk { background: #007bff; }
+    .doc-btn.doc-rumah { background: #28a745; }
+    .doc-btn.doc-selfie { background: #ffc107; color: #212529; }
+    .doc-btn.doc-gps { background: #17a2b8; }
+    .doc-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-1px);
+    }
+    .no-docs {
+        color: #6c757d;
+        font-style: italic;
+        font-size: 0.875rem;
+    }
+    .status.rejected {
+        background: #f8d7da;
+        color: #721c24;
     }
 `;
 document.head.appendChild(style);
