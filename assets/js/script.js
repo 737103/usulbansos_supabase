@@ -1218,6 +1218,8 @@ function showRejectModal(bantuanId) {
 async function updateBantuanStatusWithReason(id, status, reason = null) {
     try {
         const token = localStorage.getItem('token');
+        console.log('Updating bantuan status with reason:', { id, status, reason });
+        
         const response = await fetch(`${API_BASE_URL}/admin/bantuan/${id}/status`, {
             method: 'PUT',
             headers: {
@@ -1226,31 +1228,50 @@ async function updateBantuanStatusWithReason(id, status, reason = null) {
             },
             body: JSON.stringify({ status, reason })
         });
+        
+        console.log('Response status:', response.status);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Gagal update status');
+        console.log('Response data:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Gagal update status');
+        }
+        
         showMessage('Status usulan berhasil diperbarui', 'success');
         showKelolaBantuan();
     } catch (e) {
-        console.error(e);
-        showMessage('Gagal memperbarui status', 'error');
+        console.error('Error updating bantuan status with reason:', e);
+        showMessage(`Gagal memperbarui status: ${e.message}`, 'error');
     }
 }
 
 async function updateBantuanStatus(bantuanId, status) {
     const token = localStorage.getItem('token');
     try {
+        console.log('Updating bantuan status:', { bantuanId, status });
+        
         const response = await fetch(`${API_BASE_URL}/admin/bantuan/${bantuanId}/status`, {
             method: 'PUT',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            headers: { 
+                'Authorization': `Bearer ${token}`, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ status })
         });
+        
+        console.log('Response status:', response.status);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Gagal update status');
+        console.log('Response data:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Gagal update status');
+        }
+        
         showMessage('Status usulan berhasil diperbarui', 'success');
         showKelolaBantuan();
     } catch (e) {
-        console.error(e);
-        showMessage('Gagal memperbarui status', 'error');
+        console.error('Error updating bantuan status:', e);
+        showMessage(`Gagal memperbarui status: ${e.message}`, 'error');
     }
 }
 

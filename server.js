@@ -102,6 +102,7 @@ db.serialize(() => {
         foto_lokasi_rumah TEXT,
         gps_latitude REAL,
         gps_longitude REAL,
+        rejection_reason TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
@@ -112,7 +113,7 @@ db.serialize(() => {
                    COALESCE(alasan_pengajuan, deskripsi) as alasan_pengajuan,
                    status, foto_kk, foto_rumah_depan, foto_rumah_dalam, 
                    foto_selfie_ktp, foto_lokasi_rumah, gps_latitude, gps_longitude,
-                   created_at, updated_at
+                   rejection_reason, created_at, updated_at
             FROM bantuan_sosial`, () => {
             // Drop old table and rename new table
             db.run(`DROP TABLE bantuan_sosial`, () => {
@@ -677,27 +678,37 @@ app.put('/api/admin/bantuan/:id/status', authenticateToken, (req, res) => {
     const { status, reason } = req.body;
     const bantuanId = req.params.id;
 
+    console.log('Update bantuan status request:', { bantuanId, status, reason, userId: req.user.id });
+
     if (!['pending', 'approved', 'rejected'].includes(status)) {
+        console.log('Invalid status:', status);
         return res.status(400).json({ message: 'Status tidak valid' });
     }
 
     // If status is rejected, reason is required
     if (status === 'rejected' && !reason) {
+        console.log('Rejection reason required but not provided');
         return res.status(400).json({ message: 'Alasan penolakan wajib diisi' });
     }
 
+    console.log('Executing SQL update for bantuan:', bantuanId);
     db.run(
         'UPDATE bantuan_sosial SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [status, reason || null, bantuanId],
         function(err) {
             if (err) {
-                return res.status(500).json({ message: 'Server error' });
+                console.error('Database error updating bantuan status:', err);
+                return res.status(500).json({ message: 'Server error: ' + err.message });
             }
 
+            console.log('Update result:', { changes: this.changes, lastID: this.lastID });
+
             if (this.changes === 0) {
+                console.log('No bantuan found with id:', bantuanId);
                 return res.status(404).json({ message: 'Bantuan tidak ditemukan' });
             }
 
+            console.log('Bantuan status updated successfully');
             res.json({ message: 'Status bantuan berhasil diupdate' });
         }
     );
