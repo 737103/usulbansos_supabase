@@ -704,6 +704,46 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
     });
 });
 
+// Delete sanggahan (admin)
+app.delete('/api/admin/sanggahan/:id', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Akses ditolak' });
+    }
+    
+    const id = req.params.id;
+    
+    console.log('Delete sanggahan request:', { id, userId: req.user.id });
+    
+    // First, get the sanggahan details to check if it exists
+    db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
+        if (err) {
+            console.error('Error getting sanggahan:', err);
+            return res.status(500).json({ message: 'Server error' });
+        }
+        
+        if (!sanggahan) {
+            return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+        }
+        
+        console.log('Sanggahan to delete:', sanggahan);
+        
+        // Delete the sanggahan
+        db.run('DELETE FROM sanggahan WHERE id = ?', [id], function(err) {
+            if (err) {
+                console.error('Error deleting sanggahan:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+            }
+            
+            console.log('Sanggahan deleted successfully');
+            res.json({ message: 'Sanggahan berhasil dihapus' });
+        });
+    });
+});
+
 // Get user's bantuan sosial
 app.get('/api/bantuan', authenticateToken, (req, res) => {
     const userId = req.user.id;

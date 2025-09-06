@@ -607,6 +607,12 @@ async function showKelolaSanggahan() {
                                                 </div>
                                             </div>
                                         `}
+                                        <div class="delete-section">
+                                            <button class="action-btn delete-btn" onclick="deleteSanggahan(${s.id})" title="Hapus sanggahan">
+                                                <i class="fas fa-trash"></i>
+                                                <span>Hapus</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -636,6 +642,43 @@ async function updateSanggahanStatus(id, status) {
     } catch (e) {
         console.error(e);
         showMessage('Gagal memperbarui status', 'error');
+    }
+}
+
+// Delete sanggahan
+async function deleteSanggahan(id) {
+    // Show confirmation dialog
+    const confirmed = confirm('Apakah Anda yakin ingin menghapus sanggahan ini?\n\nTindakan ini tidak dapat dibatalkan.');
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    const token = localStorage.getItem('token');
+    try {
+        console.log('Deleting sanggahan:', id);
+        
+        const response = await fetch(`${API_BASE_URL}/admin/sanggahan/${id}`, {
+            method: 'DELETE',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('Delete response status:', response.status);
+        const data = await response.json();
+        console.log('Delete response data:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Gagal menghapus sanggahan');
+        }
+        
+        showMessage('Sanggahan berhasil dihapus', 'success');
+        showKelolaSanggahan();
+    } catch (e) {
+        console.error('Error deleting sanggahan:', e);
+        showMessage(`Gagal menghapus sanggahan: ${e.message}`, 'error');
     }
 }
 
@@ -2520,6 +2563,21 @@ style.textContent = `
         background: linear-gradient(135deg, #e0a800, #e6a200);
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(255, 193, 7, 0.4);
+    }
+    .delete-btn {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    }
+    .delete-btn:hover {
+        background: linear-gradient(135deg, #c82333, #bd2130);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+    }
+    .delete-section {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid #dee2e6;
     }
     .status-info {
         text-align: center;
