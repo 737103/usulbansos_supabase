@@ -556,8 +556,8 @@ async function showKelolaSanggahan() {
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="alasan-text" title="${s.alasan}">
-                                        ${s.alasan.length > 50 ? s.alasan.substring(0, 50) + '...' : s.alasan}
+                                    <div class="alasan-full-text">
+                                        ${s.alasan}
                                     </div>
                                 </td>
                                 <td>
@@ -568,25 +568,44 @@ async function showKelolaSanggahan() {
                                 <td>${new Date(s.created_at).toLocaleDateString('id-ID')}</td>
                                 <td>
                                     ${s.bukti_file ? 
-                                        `<a href="/uploads/${s.bukti_file}" target="_blank" class="btn-sm btn-primary">
-                                            <i class="fas fa-download"></i> Lihat Bukti
-                                        </a>` : 
-                                        '<span class="no-docs">Tidak ada</span>'
+                                        `<div class="evidence-container">
+                                            <div class="evidence-preview">
+                                                <i class="fas fa-file-image evidence-icon"></i>
+                                                <span class="evidence-name">${s.bukti_file.split('-').slice(1).join('-')}</span>
+                                            </div>
+                                            <a href="/uploads/${s.bukti_file}" target="_blank" class="evidence-btn">
+                                                <i class="fas fa-eye"></i> Lihat
+                                            </a>
+                                            <a href="/uploads/${s.bukti_file}" download class="evidence-btn download">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        </div>` : 
+                                        '<div class="no-evidence"><i class="fas fa-ban"></i> Tidak ada bukti</div>'
                                     }
                                 </td>
                                 <td>
-                                    <div class="action-buttons">
+                                    <div class="action-container">
                                         ${s.status === 'pending' ? `
-                                            <button class="btn-sm btn-success" onclick="updateSanggahanStatus(${s.id}, 'accepted')" title="Terima sanggahan">
-                                                <i class="fas fa-check"></i> Terima
-                                            </button>
-                                            <button class="btn-sm btn-danger" onclick="updateSanggahanStatus(${s.id}, 'rejected')" title="Tolak sanggahan">
-                                                <i class="fas fa-times"></i> Tolak
-                                            </button>
+                                            <div class="action-group">
+                                                <button class="action-btn accept-btn" onclick="updateSanggahanStatus(${s.id}, 'accepted')" title="Terima sanggahan dan setujui bantuan warga">
+                                                    <i class="fas fa-check-circle"></i>
+                                                    <span>Terima</span>
+                                                </button>
+                                                <button class="action-btn reject-btn" onclick="updateSanggahanStatus(${s.id}, 'rejected')" title="Tolak sanggahan">
+                                                    <i class="fas fa-times-circle"></i>
+                                                    <span>Tolak</span>
+                                                </button>
+                                            </div>
                                         ` : `
-                                            <button class="btn-sm btn-warning" onclick="updateSanggahanStatus(${s.id}, 'pending')" title="Set status proses">
-                                                <i class="fas fa-clock"></i> Proses
-                                            </button>
+                                            <div class="action-group">
+                                                <button class="action-btn process-btn" onclick="updateSanggahanStatus(${s.id}, 'pending')" title="Set status proses">
+                                                    <i class="fas fa-clock"></i>
+                                                    <span>Proses</span>
+                                                </button>
+                                                <div class="status-info">
+                                                    <small>Status: ${getSanggahanStatusLabel(s.status)}</small>
+                                                </div>
+                                            </div>
                                         `}
                                     </div>
                                 </td>
@@ -2376,6 +2395,162 @@ style.textContent = `
     .btn-sm:hover {
         opacity: 0.8;
         transform: translateY(-1px);
+    }
+    .alasan-full-text {
+        max-width: 300px;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
+        line-height: 1.4;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+    .evidence-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 150px;
+    }
+    .evidence-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: #e3f2fd;
+        border-radius: 6px;
+        border: 1px solid #bbdefb;
+    }
+    .evidence-icon {
+        color: #1976d2;
+        font-size: 1.2rem;
+    }
+    .evidence-name {
+        font-size: 0.8rem;
+        color: #1976d2;
+        font-weight: 500;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .evidence-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        background: #007bff;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+    .evidence-btn.download {
+        background: #28a745;
+    }
+    .evidence-btn:hover {
+        opacity: 0.8;
+        transform: translateY(-1px);
+    }
+    .no-evidence {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        color: #6c757d;
+        font-style: italic;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px dashed #dee2e6;
+    }
+    .action-container {
+        min-width: 120px;
+    }
+    .action-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: left;
+        width: 100%;
+    }
+    .action-btn i {
+        font-size: 1rem;
+    }
+    .accept-btn {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+    }
+    .accept-btn:hover {
+        background: linear-gradient(135deg, #218838, #1ea085);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+    }
+    .reject-btn {
+        background: linear-gradient(135deg, #dc3545, #e74c3c);
+        color: white;
+        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    }
+    .reject-btn:hover {
+        background: linear-gradient(135deg, #c82333, #c0392b);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+    }
+    .process-btn {
+        background: linear-gradient(135deg, #ffc107, #ffb300);
+        color: #212529;
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+    }
+    .process-btn:hover {
+        background: linear-gradient(135deg, #e0a800, #e6a200);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(255, 193, 7, 0.4);
+    }
+    .status-info {
+        text-align: center;
+        padding: 0.25rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    .status-info small {
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+    .table {
+        table-layout: auto;
+    }
+    .table th,
+    .table td {
+        vertical-align: top;
+        padding: 1rem 0.75rem;
+    }
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        min-width: 200px;
+    }
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        min-width: 150px;
+    }
+    .table th:nth-child(8),
+    .table td:nth-child(8) {
+        min-width: 120px;
     }
 `;
 document.head.appendChild(style);
