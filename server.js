@@ -837,38 +837,139 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
     }
 
     const stats = {};
+    let completedQueries = 0;
+    const totalQueries = 10;
+
+    const checkComplete = () => {
+        completedQueries++;
+        if (completedQueries === totalQueries) {
+            res.json(stats);
+        }
+    };
 
     // Get user statistics
     db.get('SELECT COUNT(*) as total FROM users WHERE role = "warga"', (err, result) => {
         if (err) {
-            return res.status(500).json({ message: 'Server error' });
+            console.error('Error getting total users:', err);
+            stats.totalUsers = 0;
+        } else {
+            stats.totalUsers = result.total;
         }
-        stats.totalUsers = result.total;
+        checkComplete();
+    });
 
-        db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
-            if (err) {
-                return res.status(500).json({ message: 'Server error' });
-            }
+    db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
+        if (err) {
+            console.error('Error getting verified users:', err);
+            stats.verifiedUsers = 0;
+        } else {
             stats.verifiedUsers = result.verified;
-            stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
+        }
+        stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
+        checkComplete();
+    });
 
-            // Get bantuan statistics
-            db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
-                if (err) {
-                    return res.status(500).json({ message: 'Server error' });
-                }
-                stats.totalBantuan = result.total;
+    // Get bantuan statistics
+    db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
+        if (err) {
+            console.error('Error getting total bantuan:', err);
+            stats.totalBantuan = 0;
+        } else {
+            stats.totalBantuan = result.total;
+        }
+        checkComplete();
+    });
 
-                db.get('SELECT COUNT(*) as pending FROM bantuan_sosial WHERE status = "pending"', (err, result) => {
-                    if (err) {
-                        return res.status(500).json({ message: 'Server error' });
-                    }
-                    stats.pendingBantuan = result.pending;
+    // Get bantuan by jenis - using all() instead of get() for COUNT queries
+    db.all('SELECT COUNT(*) as pkh FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
+        if (err) {
+            console.error('Error getting PKH count:', err);
+            stats.pkh = 0;
+        } else {
+            stats.pkh = result[0] ? result[0].pkh : 0;
+        }
+        checkComplete();
+    });
 
-                    res.json(stats);
-                });
-            });
-        });
+    db.all('SELECT COUNT(*) as bnpt FROM bantuan_sosial WHERE jenis_bantuan = "BNPT"', (err, result) => {
+        if (err) {
+            console.error('Error getting BNPT count:', err);
+            stats.bnpt = 0;
+        } else {
+            stats.bnpt = result[0] ? result[0].bnpt : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as non_bansos FROM bantuan_sosial WHERE jenis_bantuan NOT IN ("PKH", "BNPT")', (err, result) => {
+        if (err) {
+            console.error('Error getting non-bansos count:', err);
+            stats.nonBansos = 0;
+        } else {
+            stats.nonBansos = result[0] ? result[0].non_bansos : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as approved FROM bantuan_sosial WHERE status = "approved"', (err, result) => {
+        if (err) {
+            console.error('Error getting approved bantuan:', err);
+            stats.approvedBantuan = 0;
+        } else {
+            stats.approvedBantuan = result[0] ? result[0].approved : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as rejected FROM bantuan_sosial WHERE status = "rejected"', (err, result) => {
+        if (err) {
+            console.error('Error getting rejected bantuan:', err);
+            stats.rejectedBantuan = 0;
+        } else {
+            stats.rejectedBantuan = result[0] ? result[0].rejected : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as pending FROM bantuan_sosial WHERE status = "pending"', (err, result) => {
+        if (err) {
+            console.error('Error getting pending bantuan:', err);
+            stats.pendingBantuan = 0;
+        } else {
+            stats.pendingBantuan = result[0] ? result[0].pending : 0;
+        }
+        checkComplete();
+    });
+
+    // Get sanggahan statistics
+    db.all('SELECT COUNT(*) as total FROM sanggahan', (err, result) => {
+        if (err) {
+            console.error('Error getting total sanggahan:', err);
+            stats.totalSanggahan = 0;
+        } else {
+            stats.totalSanggahan = result[0] ? result[0].total : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as diri_sendiri FROM sanggahan WHERE tipe = "diri_sendiri"', (err, result) => {
+        if (err) {
+            console.error('Error getting diri sendiri sanggahan:', err);
+            stats.sanggahanDiriSendiri = 0;
+        } else {
+            stats.sanggahanDiriSendiri = result[0] ? result[0].diri_sendiri : 0;
+        }
+        checkComplete();
+    });
+
+    db.all('SELECT COUNT(*) as warga_lain FROM sanggahan WHERE tipe = "warga_lain"', (err, result) => {
+        if (err) {
+            console.error('Error getting warga lain sanggahan:', err);
+            stats.sanggahanWargaLain = 0;
+        } else {
+            stats.sanggahanWargaLain = result[0] ? result[0].warga_lain : 0;
+        }
+        checkComplete();
     });
 });
 

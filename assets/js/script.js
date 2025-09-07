@@ -455,7 +455,19 @@ function showAdminDashboard() {
             </div>
             
             <div class="dashboard-content">
+                <div id="admin-content">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+                
                 <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-chart-bar"></i> Statistik</h3>
+                        <p>Lihat statistik pendaftaran dan verifikasi</p>
+                        <button class="btn-primary" onclick="showStatistics()">
+                            <i class="fas fa-chart-line"></i> Lihat Statistik
+                        </button>
+                    </div>
+                    
                     <div class="dashboard-card">
                         <h3><i class="fas fa-users"></i> Verifikasi Warga</h3>
                         <p>Kelola dan verifikasi akun warga yang mendaftar</p>
@@ -479,14 +491,6 @@ function showAdminDashboard() {
                             <i class="fas fa-comments"></i> Kelola Sanggahan
                         </button>
                     </div>
-
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-chart-bar"></i> Statistik</h3>
-                        <p>Lihat statistik pendaftaran dan verifikasi</p>
-                        <button class="btn-primary" onclick="showStatistics()">
-                            <i class="fas fa-chart-line"></i> Lihat Statistik
-                        </button>
-                    </div>
                     
                     <div class="dashboard-card">
                         <h3><i class="fas fa-cog"></i> Pengaturan</h3>
@@ -496,16 +500,12 @@ function showAdminDashboard() {
                         </button>
                     </div>
                 </div>
-                
-                <div id="admin-content">
-                    <!-- Dynamic content will be loaded here -->
-                </div>
             </div>
         </div>
     `;
     
     updateNavbarForLoggedInUser();
-    showVerificationTable();
+    showStatistics(); // Show statistics as default view
 }
 // Admin: Kelola Sanggahan
 async function showKelolaSanggahan() {
@@ -1100,31 +1100,145 @@ async function showStatistics() {
         const stats = await response.json();
         
         content.innerHTML = `
-            <div class="dashboard-grid">
-                <div class="dashboard-card">
-                    <h3>Total Pendaftar</h3>
-                    <div class="stat-number">${stats.totalUsers}</div>
-                    <p>Warga yang telah mendaftar</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3>Terverifikasi</h3>
-                    <div class="stat-number">${stats.verifiedUsers}</div>
-                    <p>Akun yang telah diverifikasi</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3>Menunggu Verifikasi</h3>
-                    <div class="stat-number">${stats.pendingUsers}</div>
-                    <p>Akun yang menunggu verifikasi</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3>Total Ajuan Bantuan</h3>
-                    <div class="stat-number">${stats.totalBantuan}</div>
-                    <p>Ajuan bantuan sosial</p>
-                </div>
-                <div class="dashboard-card">
-                    <h3>Ajuan Menunggu</h3>
-                    <div class="stat-number">${stats.pendingBantuan}</div>
-                    <p>Ajuan yang menunggu persetujuan</p>
+            <div class="statistics-container">
+                <h2><i class="fas fa-chart-bar"></i> Statistik Dashboard</h2>
+                
+                <div class="statistics-grid">
+                    <!-- Warga Statistics -->
+                    <div class="stat-section">
+                        <h3><i class="fas fa-users"></i> Data Warga</h3>
+                        <div class="stat-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon users-icon">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.totalUsers || 0}</div>
+                                    <div class="stat-label">Jumlah Warga Mendaftar</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon verified-icon">
+                                    <i class="fas fa-user-check"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.verifiedUsers || 0}</div>
+                                    <div class="stat-label">Jumlah Akun Warga Terverifikasi</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bantuan Sosial Statistics -->
+                    <div class="stat-section">
+                        <h3><i class="fas fa-hand-holding-heart"></i> Usulan Bantuan Sosial</h3>
+                        <div class="stat-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon total-icon">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.totalBantuan || 0}</div>
+                                    <div class="stat-label">Jumlah Usulan Bansos</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon pkh-icon">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.pkh || 0}</div>
+                                    <div class="stat-label">PKH (Bantuan Pangan)</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon bnpt-icon">
+                                    <i class="fas fa-home"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.bnpt || 0}</div>
+                                    <div class="stat-label">BNPT (Bantuan Perumahan)</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon non-bansos-icon">
+                                    <i class="fas fa-gift"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.nonBansos || 0}</div>
+                                    <div class="stat-label">Non Bansos (Lainnya)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Bantuan Statistics -->
+                    <div class="stat-section">
+                        <h3><i class="fas fa-tasks"></i> Status Usulan Bantuan</h3>
+                        <div class="stat-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon approved-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.approvedBantuan || 0}</div>
+                                    <div class="stat-label">Jumlah Usulan Bansos Diterima</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon rejected-icon">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.rejectedBantuan || 0}</div>
+                                    <div class="stat-label">Jumlah Usulan Bansos Ditolak</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon pending-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.pendingBantuan || 0}</div>
+                                    <div class="stat-label">Jumlah Usulan Proses</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sanggahan Statistics -->
+                    <div class="stat-section">
+                        <h3><i class="fas fa-comments"></i> Sanggahan</h3>
+                        <div class="stat-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon total-sanggahan-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.totalSanggahan || 0}</div>
+                                    <div class="stat-label">Jumlah Sanggahan</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon diri-sendiri-icon">
+                                    <i class="fas fa-user-times"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.sanggahanDiriSendiri || 0}</div>
+                                    <div class="stat-label">Sanggahan Diri Sendiri</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon warga-lain-icon">
+                                    <i class="fas fa-users-slash"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">${stats.sanggahanWargaLain || 0}</div>
+                                    <div class="stat-label">Sanggahan Terhadap Warga</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
