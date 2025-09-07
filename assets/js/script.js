@@ -1270,12 +1270,13 @@ async function showKelolaBantuan() {
     const token = localStorage.getItem('token');
 
     try {
-        // Fetch both users and bantuan data
+        // Fetch both users and bantuan data with cache busting
+        const timestamp = new Date().getTime();
         const [usersResponse, bantuanResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/admin/users`, {
+            fetch(`${API_BASE_URL}/admin/users?t=${timestamp}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             }),
-            fetch(`${API_BASE_URL}/admin/bantuan`, {
+            fetch(`${API_BASE_URL}/admin/bantuan?t=${timestamp}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
         ]);
@@ -1991,7 +1992,8 @@ async function showRiwayatAjuan() {
     
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/bantuan`, {
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${API_BASE_URL}/bantuan?t=${timestamp}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
