@@ -882,7 +882,7 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
 
     // Get bantuan by jenis - using get() for COUNT queries with proper syntax
     db.get('SELECT COUNT(*) as pkh FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
-        if (err) {
+                    if (err) {
             console.error('Error getting PKH count:', err);
             stats.pkh = 0;
         } else {
