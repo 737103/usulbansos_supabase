@@ -853,36 +853,36 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
             console.error('Error getting total users:', err);
             stats.totalUsers = 0;
         } else {
-            stats.totalUsers = result.total;
+        stats.totalUsers = result.total;
         }
         checkComplete();
     });
 
-    db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
-        if (err) {
+        db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
+            if (err) {
             console.error('Error getting verified users:', err);
             stats.verifiedUsers = 0;
         } else {
             stats.verifiedUsers = result.verified;
         }
-        stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
+            stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
         checkComplete();
     });
 
-    // Get bantuan statistics
-    db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
-        if (err) {
+            // Get bantuan statistics
+            db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
+                if (err) {
             console.error('Error getting total bantuan:', err);
             stats.totalBantuan = 0;
         } else {
-            stats.totalBantuan = result.total;
+                stats.totalBantuan = result.total;
         }
         checkComplete();
     });
 
     // Get bantuan by jenis - using all() instead of get() for COUNT queries
     db.all('SELECT COUNT(*) as pkh FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
-        if (err) {
+                    if (err) {
             console.error('Error getting PKH count:', err);
             stats.pkh = 0;
         } else {
