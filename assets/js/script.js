@@ -2340,10 +2340,15 @@ async function showRiwayatSanggahan() {
                                 <td>${new Date(sanggahan.created_at).toLocaleDateString('id-ID')}</td>
                                 <td>
                                     ${sanggahan.bukti_file ? 
-                                        `<a href="/uploads/${sanggahan.bukti_file}" target="_blank" class="btn-sm btn-primary">
-                                            <i class="fas fa-download"></i> Lihat Bukti
-                                        </a>` : 
-                                        'Tidak ada'
+                                        `<div class="bukti-container">
+                                            <a href="/uploads/${sanggahan.bukti_file}" target="_blank" class="btn-sm btn-primary bukti-link">
+                                                <i class="fas fa-download"></i> Lihat Bukti
+                                            </a>
+                                            <div class="bukti-preview" onclick="showBuktiPreview('${sanggahan.bukti_file}')">
+                                                <i class="fas fa-eye"></i> Preview
+                                            </div>
+                                        </div>` : 
+                                        '<span class="no-bukti">Tidak ada</span>'
                                     }
                                 </td>
                             </tr>
@@ -2380,6 +2385,57 @@ function getSanggahanStatusClass(status) {
         'rejected': 'rejected'
     };
     return classes[status] || 'pending';
+}
+
+// Show bukti preview modal
+function showBuktiPreview(filename) {
+    const modalHTML = `
+        <div id="buktiModal" class="modal bukti-modal">
+            <div class="modal-content bukti-modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-image"></i> Preview Bukti Pendukung</h3>
+                    <span class="close" onclick="closeBuktiModal()">&times;</span>
+                </div>
+                <div class="modal-body bukti-modal-body">
+                    <div class="bukti-image-container">
+                        <img src="/uploads/${filename}" alt="Bukti Pendukung" class="bukti-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div class="bukti-error" style="display: none;">
+                            <i class="fas fa-file-alt"></i>
+                            <p>File tidak dapat ditampilkan sebagai gambar</p>
+                            <a href="/uploads/${filename}" target="_blank" class="btn-primary">
+                                <i class="fas fa-download"></i> Download File
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bukti-actions">
+                        <a href="/uploads/${filename}" target="_blank" class="btn-primary">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button class="btn-secondary" onclick="closeBuktiModal()">
+                            <i class="fas fa-times"></i> Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Close modal when clicking outside
+    document.getElementById('buktiModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeBuktiModal();
+        }
+    });
+}
+
+// Close bukti modal
+function closeBuktiModal() {
+    const modal = document.getElementById('buktiModal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // Show Profil

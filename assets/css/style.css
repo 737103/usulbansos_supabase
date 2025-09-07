@@ -2846,3 +2846,212 @@ button {
         font-size: 0.85rem;
     }
 }
+
+/* Bukti Pendukung Styles */
+.bukti-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.bukti-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.bukti-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.bukti-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: #17a2b8;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.bukti-preview:hover {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.no-bukti {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* Bukti Modal Styles */
+.bukti-modal .modal-content {
+    max-width: 800px;
+    width: 95%;
+    max-height: 90vh;
+}
+
+.bukti-modal-content {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.bukti-modal-body {
+    padding: 20px;
+    text-align: center;
+}
+
+.bukti-image-container {
+    margin-bottom: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f8f9fa;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bukti-image {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.bukti-error {
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.bukti-error i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    color: #dee2e6;
+}
+
+.bukti-error p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.bukti-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.bukti-actions .btn-primary,
+.bukti-actions .btn-secondary {
+    padding: 12px 24px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.bukti-actions .btn-primary:hover,
+.bukti-actions .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile Responsive for Bukti */
+@media (max-width: 768px) {
+    .bukti-container {
+        flex-direction: row;
+        gap: 6px;
+    }
+    
+    .bukti-link,
+    .bukti-preview {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .bukti-modal .modal-content {
+        width: 98%;
+        margin: 1% auto;
+    }
+    
+    .bukti-modal-body {
+        padding: 15px;
+    }
+    
+    .bukti-image-container {
+        min-height: 250px;
+    }
+    
+    .bukti-image {
+        max-height: 300px;
+    }
+    
+    .bukti-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .bukti-actions .btn-primary,
+    .bukti-actions .btn-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .bukti-container {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .bukti-link,
+    .bukti-preview {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+    
+    .bukti-modal-body {
+        padding: 10px;
+    }
+    
+    .bukti-image-container {
+        min-height: 200px;
+    }
+    
+    .bukti-image {
+        max-height: 250px;
+    }
+    
+    .bukti-error {
+        padding: 20px 15px;
+    }
+    
+    .bukti-error i {
+        font-size: 2rem;
+    }
+    
+    .bukti-error p {
+        font-size: 1rem;
+    }
+}
