@@ -755,6 +755,177 @@ function showWargaDashboard() {
     `;
     
     updateNavbarForLoggedInUser();
+    
+    // Check for notifications after dashboard is loaded
+    checkAndShowNotifications();
+}
+
+// Check and show notifications for verified bansos and sanggahan
+async function checkAndShowNotifications() {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Get user's bansos data
+        const bansosResponse = await fetch(`${API_BASE_URL}/bantuan`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Get user's sanggahan data
+        const sanggahanResponse = await fetch(`${API_BASE_URL}/sanggahan`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (bansosResponse.ok && sanggahanResponse.ok) {
+            const bansosData = await bansosResponse.json();
+            const sanggahanData = await sanggahanResponse.json();
+            
+            // Check for approved bansos
+            const approvedBansos = bansosData.filter(b => b.status === 'approved');
+            const rejectedBansos = bansosData.filter(b => b.status === 'rejected');
+            
+            // Check for accepted sanggahan
+            const acceptedSanggahan = sanggahanData.filter(s => s.status === 'accepted');
+            const rejectedSanggahan = sanggahanData.filter(s => s.status === 'rejected');
+            
+            // Show notifications if there are any updates
+            if (approvedBansos.length > 0 || rejectedBansos.length > 0 || 
+                acceptedSanggahan.length > 0 || rejectedSanggahan.length > 0) {
+                showNotificationPanel({
+                    approvedBansos,
+                    rejectedBansos,
+                    acceptedSanggahan,
+                    rejectedSanggahan
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error checking notifications:', error);
+    }
+}
+
+// Show notification panel with updates
+function showNotificationPanel(notifications) {
+    const { approvedBansos, rejectedBansos, acceptedSanggahan, rejectedSanggahan } = notifications;
+    
+    // Create notification panel HTML
+    const notificationHTML = `
+        <div id="notificationPanel" class="notification-panel">
+            <div class="notification-header">
+                <h3><i class="fas fa-bell"></i> Pemberitahuan Terbaru</h3>
+                <button class="notification-close" onclick="closeNotificationPanel()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="notification-content">
+                ${approvedBansos.length > 0 ? `
+                    <div class="notification-item success">
+                        <div class="notification-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="notification-text">
+                            <h4>Ajuan Bantuan Sosial Disetujui!</h4>
+                            <p>Selamat! ${approvedBansos.length} ajuan bantuan sosial Anda telah disetujui oleh admin kelurahan.</p>
+                            <div class="notification-details">
+                                ${approvedBansos.map(b => `
+                                    <div class="detail-item">
+                                        <strong>${b.jenis_bantuan}</strong> - ${new Date(b.updated_at).toLocaleDateString('id-ID')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${rejectedBansos.length > 0 ? `
+                    <div class="notification-item error">
+                        <div class="notification-icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <div class="notification-text">
+                            <h4>Ajuan Bantuan Sosial Ditolak</h4>
+                            <p>Maaf, ${rejectedBansos.length} ajuan bantuan sosial Anda ditolak oleh admin kelurahan.</p>
+                            <div class="notification-details">
+                                ${rejectedBansos.map(b => `
+                                    <div class="detail-item">
+                                        <strong>${b.jenis_bantuan}</strong> - ${new Date(b.updated_at).toLocaleDateString('id-ID')}
+                                        ${b.rejection_reason ? `<br><small>Alasan: ${b.rejection_reason}</small>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${acceptedSanggahan.length > 0 ? `
+                    <div class="notification-item success">
+                        <div class="notification-icon">
+                            <i class="fas fa-gavel"></i>
+                        </div>
+                        <div class="notification-text">
+                            <h4>Sanggahan Diterima!</h4>
+                            <p>${acceptedSanggahan.length} sanggahan yang Anda ajukan telah diterima oleh admin kelurahan.</p>
+                            <div class="notification-details">
+                                ${acceptedSanggahan.map(s => `
+                                    <div class="detail-item">
+                                        <strong>${s.tipe === 'diri_sendiri' ? 'Sanggah Diri Sendiri' : 'Sanggah Warga Lain'}</strong> - ${new Date(s.updated_at).toLocaleDateString('id-ID')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${rejectedSanggahan.length > 0 ? `
+                    <div class="notification-item warning">
+                        <div class="notification-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="notification-text">
+                            <h4>Sanggahan Ditolak</h4>
+                            <p>${rejectedSanggahan.length} sanggahan yang Anda ajukan ditolak oleh admin kelurahan.</p>
+                            <div class="notification-details">
+                                ${rejectedSanggahan.map(s => `
+                                    <div class="detail-item">
+                                        <strong>${s.tipe === 'diri_sendiri' ? 'Sanggah Diri Sendiri' : 'Sanggah Warga Lain'}</strong> - ${new Date(s.updated_at).toLocaleDateString('id-ID')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="notification-footer">
+                <button class="btn-primary" onclick="closeNotificationPanel()">
+                    <i class="fas fa-check"></i> Mengerti
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Add notification panel to body
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+        const panel = document.getElementById('notificationPanel');
+        if (panel) {
+            panel.classList.add('fade-out');
+            setTimeout(() => {
+                panel.remove();
+            }, 300);
+        }
+    }, 10000);
+}
+
+// Close notification panel
+function closeNotificationPanel() {
+    const panel = document.getElementById('notificationPanel');
+    if (panel) {
+        panel.classList.add('fade-out');
+        setTimeout(() => {
+            panel.remove();
+        }, 300);
+    }
 }
 
 // Show Verification Table
