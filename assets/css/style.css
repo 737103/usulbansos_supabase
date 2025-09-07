@@ -2848,6 +2848,19 @@ button {
 }
 
 /* Bukti Pendukung Styles */
+.settings-form .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.settings-form .form-actions {
+    margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+    .settings-form .form-grid { grid-template-columns: 1fr; }
+}
 .bukti-container {
     display: flex;
     flex-direction: column;

@@ -1429,10 +1429,78 @@ function showSettings() {
     const content = document.getElementById('admin-content');
     content.innerHTML = `
         <div class="dashboard-card">
-            <h3>Pengaturan Aplikasi</h3>
-            <p>Fitur pengaturan akan segera tersedia.</p>
+            <h3><i class="fas fa-cog"></i> Pengaturan Aplikasi</h3>
+            <p>Ubah kredensial admin kelurahan. Setelah perubahan berhasil, Anda akan diminta login ulang.</p>
+            <form id="adminSettingsForm" class="settings-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="currentPassword">Password Saat Ini</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUsername">Username Baru (opsional)</label>
+                        <input type="text" id="newUsername" placeholder="Biarkan kosong jika tidak ingin ganti">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Password Baru (opsional)</label>
+                        <input type="password" id="newPassword" placeholder="Biarkan kosong jika tidak ingin ganti">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Konfirmasi Password Baru</label>
+                        <input type="password" id="confirmPassword" placeholder="Ulangi password baru">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Simpan Perubahan</button>
+                </div>
+            </form>
         </div>
     `;
+
+    const form = document.getElementById('adminSettingsForm');
+    form.addEventListener('submit', handleAdminSettingsSubmit);
+}
+
+async function handleAdminSettingsSubmit(e) {
+    e.preventDefault();
+    const currentPassword = document.getElementById('currentPassword').value.trim();
+    const newUsername = document.getElementById('newUsername').value.trim();
+    const newPassword = document.getElementById('newPassword').value.trim();
+    const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+    if (!currentPassword) {
+        showMessage('Password saat ini wajib diisi', 'error');
+        return;
+    }
+    if (newPassword && newPassword.length < 6) {
+        showMessage('Password baru minimal 6 karakter', 'error');
+        return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+        showMessage('Konfirmasi password baru tidak cocok', 'error');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/credentials`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPassword, newUsername: newUsername || undefined, newPassword: newPassword || undefined })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Gagal memperbarui kredensial');
+
+        showMessage(data.message || 'Berhasil memperbarui kredensial', 'success');
+
+        // Auto logout setelah 1.5 detik
+        setTimeout(() => {
+            logout();
+        }, 1500);
+    } catch (err) {
+        showMessage(err.message, 'error');
+    }
 }
 
 // Admin: Kelola Usulan Bansos

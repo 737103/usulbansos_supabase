@@ -455,6 +455,72 @@ app.delete('/api/admin/users/:id', authenticateToken, (req, res) => {
     });
 });
 
+// Update admin credentials (username/password)
+app.put('/api/admin/credentials', authenticateToken, (req, res) => {
+    // Only admin can update their credentials
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Akses ditolak' });
+    }
+
+    const adminId = req.user.id;
+    const { currentPassword, newUsername, newPassword } = req.body || {};
+
+    if (!currentPassword || (!newUsername && !newPassword)) {
+        return res.status(400).json({ message: 'Isian tidak lengkap' });
+    }
+
+    // Get current admin record
+    db.get('SELECT * FROM users WHERE id = ? AND role = "admin"', [adminId], (err, user) => {
+        if (err) {
+            return res.status(500).json({ message: 'Server error' });
+        }
+        if (!user) {
+            return res.status(404).json({ message: 'Admin tidak ditemukan' });
+        }
+        // Verify current password
+        const isValid = bcrypt.compareSync(currentPassword, user.password);
+        if (!isValid) {
+            return res.status(401).json({ message: 'Password saat ini salah' });
+        }
+
+        // Prepare updates
+        const updates = [];
+        const params = [];
+
+        if (newUsername && newUsername !== user.username) {
+            updates.push('username = ?');
+            params.push(newUsername);
+        }
+        if (newPassword) {
+            const hashed = bcrypt.hashSync(newPassword, 10);
+            updates.push('password = ?');
+            params.push(hashed);
+        }
+
+        if (updates.length === 0) {
+            return res.json({ message: 'Tidak ada perubahan' });
+        }
+
+        params.push(adminId);
+
+        // Try update; handle unique username constraint error
+        db.run(`UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'admin'`, params, function(updateErr) {
+            if (updateErr) {
+                if (updateErr && /UNIQUE constraint failed: users.username/i.test(updateErr.message)) {
+                    return res.status(400).json({ message: 'Username sudah digunakan' });
+                }
+                return res.status(500).json({ message: 'Gagal memperbarui kredensial' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({ message: 'Admin tidak ditemukan' });
+            }
+
+            return res.json({ message: 'Kredensial admin berhasil diperbarui. Silakan login ulang.' });
+        });
+    });
+});
+
 // Reset user password (admin)
 app.put('/api/admin/users/:id/reset-password', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
