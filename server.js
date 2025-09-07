@@ -880,94 +880,94 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
         checkComplete();
     });
 
-    // Get bantuan by jenis - using all() for COUNT queries
-    db.all('SELECT COUNT(*) as pkh FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
+    // Get bantuan by jenis - using proper COUNT queries
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
         if (err) {
             console.error('Error getting PKH count:', err);
             stats.pkh = 0;
         } else {
-            stats.pkh = result && result.length > 0 ? result[0].pkh : 0;
+            stats.pkh = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as bnpt FROM bantuan_sosial WHERE jenis_bantuan = "BNPT"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan = "BNPT"', (err, result) => {
         if (err) {
             console.error('Error getting BNPT count:', err);
             stats.bnpt = 0;
         } else {
-            stats.bnpt = result && result.length > 0 ? result[0].bnpt : 0;
+            stats.bnpt = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as non_bansos FROM bantuan_sosial WHERE jenis_bantuan NOT IN ("PKH", "BNPT")', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan NOT IN ("PKH", "BNPT")', (err, result) => {
         if (err) {
             console.error('Error getting non-bansos count:', err);
             stats.nonBansos = 0;
         } else {
-            stats.nonBansos = result && result.length > 0 ? result[0].non_bansos : 0;
+            stats.nonBansos = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as approved FROM bantuan_sosial WHERE status = "approved"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "approved"', (err, result) => {
         if (err) {
             console.error('Error getting approved bantuan:', err);
             stats.approvedBantuan = 0;
         } else {
-            stats.approvedBantuan = result && result.length > 0 ? result[0].approved : 0;
+            stats.approvedBantuan = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as rejected FROM bantuan_sosial WHERE status = "rejected"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "rejected"', (err, result) => {
         if (err) {
             console.error('Error getting rejected bantuan:', err);
             stats.rejectedBantuan = 0;
         } else {
-            stats.rejectedBantuan = result && result.length > 0 ? result[0].rejected : 0;
+            stats.rejectedBantuan = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as pending FROM bantuan_sosial WHERE status = "pending"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "pending"', (err, result) => {
         if (err) {
             console.error('Error getting pending bantuan:', err);
             stats.pendingBantuan = 0;
         } else {
-            stats.pendingBantuan = result && result.length > 0 ? result[0].pending : 0;
+            stats.pendingBantuan = result ? result.count : 0;
         }
         checkComplete();
     });
 
     // Get sanggahan statistics
-    db.all('SELECT COUNT(*) as total FROM sanggahan', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM sanggahan', (err, result) => {
         if (err) {
             console.error('Error getting total sanggahan:', err);
             stats.totalSanggahan = 0;
         } else {
-            stats.totalSanggahan = result && result.length > 0 ? result[0].total : 0;
+            stats.totalSanggahan = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as diri_sendiri FROM sanggahan WHERE tipe = "diri_sendiri"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM sanggahan WHERE tipe = "diri_sendiri"', (err, result) => {
         if (err) {
             console.error('Error getting diri sendiri sanggahan:', err);
             stats.sanggahanDiriSendiri = 0;
         } else {
-            stats.sanggahanDiriSendiri = result && result.length > 0 ? result[0].diri_sendiri : 0;
+            stats.sanggahanDiriSendiri = result ? result.count : 0;
         }
         checkComplete();
     });
 
-    db.all('SELECT COUNT(*) as warga_lain FROM sanggahan WHERE tipe = "warga_lain"', (err, result) => {
+    db.get('SELECT COUNT(*) as count FROM sanggahan WHERE tipe = "warga_lain"', (err, result) => {
         if (err) {
             console.error('Error getting warga lain sanggahan:', err);
             stats.sanggahanWargaLain = 0;
         } else {
-            stats.sanggahanWargaLain = result && result.length > 0 ? result[0].warga_lain : 0;
+            stats.sanggahanWargaLain = result ? result.count : 0;
         }
         checkComplete();
     });

@@ -22,6 +22,11 @@ self.addEventListener('install', function(event) {
 
 // Fetch event
 self.addEventListener('fetch', function(event) {
+  // Skip API requests - let them go to network directly
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(function(response) {
