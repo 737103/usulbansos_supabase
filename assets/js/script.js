@@ -1111,16 +1111,16 @@ async function showStatistics() {
                             <div class="stat-card">
                                 <div class="stat-icon users-icon">
                                     <i class="fas fa-user-plus"></i>
-                                </div>
+                </div>
                                 <div class="stat-info">
                                     <div class="stat-number">${stats.totalUsers || 0}</div>
                                     <div class="stat-label">Jumlah Warga Mendaftar</div>
-                                </div>
-                            </div>
+                </div>
+                </div>
                             <div class="stat-card">
                                 <div class="stat-icon verified-icon">
                                     <i class="fas fa-user-check"></i>
-                                </div>
+                </div>
                                 <div class="stat-info">
                                     <div class="stat-number">${stats.verifiedUsers || 0}</div>
                                     <div class="stat-label">Jumlah Akun Warga Terverifikasi</div>
