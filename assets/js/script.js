@@ -2340,15 +2340,15 @@ async function showRiwayatSanggahan() {
                                 <td>${new Date(sanggahan.created_at).toLocaleDateString('id-ID')}</td>
                                 <td>
                                     ${sanggahan.bukti_file ? 
-                                        `<div class="bukti-container">
-                                            <a href="/uploads/${sanggahan.bukti_file}" target="_blank" class="btn-sm btn-primary bukti-link">
-                                                <i class="fas fa-download"></i> Lihat Bukti
+                                        `<div class=\"bukti-container\">
+                                            <a href=\"/uploads/${sanggahan.bukti_file}\" target=\"_blank\" class=\"btn-sm btn-primary bukti-link\" title=\"Unduh bukti\">
+                                                <i class=\"fas fa-download\"></i> Lihat
                                             </a>
-                                            <div class="bukti-preview" onclick="showBuktiPreview('${sanggahan.bukti_file}')">
-                                                <i class="fas fa-eye"></i> Preview
-                                            </div>
+                                            <button type=\"button\" class=\"bukti-preview\" onclick=\"showBuktiPreview('${sanggahan.bukti_file}')\" title=\"Pratinjau bukti\">
+                                                <i class=\"fas fa-eye\"></i> Preview
+                                            </button>
                                         </div>` : 
-                                        '<span class="no-bukti">Tidak ada</span>'
+                                        '<span class=\"no-bukti\">Tidak ada</span>'
                                     }
                                 </td>
                             </tr>
@@ -2421,13 +2421,28 @@ function showBuktiPreview(filename) {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Close modal when clicking outside
-    document.getElementById('buktiModal').addEventListener('click', function(e) {
+
+    // tampilkan modal
+    const modalEl = document.getElementById('buktiModal');
+    if (modalEl) {
+        modalEl.style.display = 'block';
+    }
+
+    // tutup saat klik area luar
+    modalEl.addEventListener('click', function(e) {
         if (e.target === this) {
             closeBuktiModal();
         }
     });
+
+    // tutup dengan tombol ESC
+    const escHandler = (ev) => {
+        if (ev.key === 'Escape') {
+            closeBuktiModal();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
 }
 
 // Close bukti modal

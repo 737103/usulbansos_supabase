@@ -2851,19 +2851,21 @@ button {
 .bukti-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
+    gap: 6px;
+    align-items: stretch;
 }
 
 .bukti-link {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    padding: 6px 10px;
+    font-size: 0.8rem;
     text-decoration: none;
     border-radius: 6px;
     transition: all 0.3s ease;
+    width: 110px; /* agar konsisten di tabel */
+    justify-content: center;
 }
 
 .bukti-link:hover {
@@ -2875,14 +2877,16 @@ button {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
+    padding: 6px 10px;
     background: #17a2b8;
     color: white;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     transition: all 0.3s ease;
     border: none;
+    width: 110px; /* agar konsisten di tabel */
+    justify-content: center;
 }
 
 .bukti-preview:hover {
@@ -2985,8 +2989,9 @@ button {
     
     .bukti-link,
     .bukti-preview {
-        padding: 5px 10px;
-        font-size: 0.8rem;
+        padding: 5px 8px;
+        font-size: 0.78rem;
+        width: 100px;
     }
     
     .bukti-modal .modal-content {
@@ -3028,7 +3033,8 @@ button {
     .bukti-link,
     .bukti-preview {
         padding: 4px 8px;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
+        width: 100%;
     }
     
     .bukti-modal-body {
