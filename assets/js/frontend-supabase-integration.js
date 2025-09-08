@@ -28,6 +28,11 @@
 	function closeModalSafe(id) {
 		try { if (typeof window.closeModal === 'function') window.closeModal(id); } catch(e) {}
 	}
+	function storagePublicUrl(path) {
+		if (!window.supabaseBrowser) return null;
+		const { data } = window.supabaseBrowser.storage.from(window.SUPABASE_BUCKET || 'bansos-uploads').getPublicUrl(path);
+		return data && data.publicUrl ? data.publicUrl : null;
+	}
 	async function createSignedUpload(path, file) {
 		const token = localStorage.getItem('auth_token');
 		const res = await fetch('/api/storage/signed-url', {
@@ -177,6 +182,30 @@
 					}
 				});
 			}
+		}
+
+		// Rewrite link dokumen dari /uploads/... ke public URL Supabase jika ada
+		if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+			function rewriteDocLinks() {
+				// elemen link dokumen
+				const anchors = document.querySelectorAll('a[href^="/uploads/"]');
+				anchors.forEach(a => {
+					const relPath = a.getAttribute('href').replace(/^\/uploads\//, '');
+					const pub = storagePublicUrl(relPath);
+					if (pub) a.setAttribute('href', pub);
+				});
+				// gambar preview di modal bukti
+				const imgs = document.querySelectorAll('img[src^="/uploads/"]');
+				imgs.forEach(img => {
+					const relPath = img.getAttribute('src').replace(/^\/uploads\//, '');
+					const pub = storagePublicUrl(relPath);
+					if (pub) img.setAttribute('src', pub);
+				});
+			}
+			rewriteDocLinks();
+			// observe perubahan DOM sederhana (single-page UI)
+			const observer = new MutationObserver(() => rewriteDocLinks());
+			observer.observe(document.body, { childList: true, subtree: true });
 		}
 	});
 })();

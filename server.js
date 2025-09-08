@@ -67,6 +67,22 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
+// Proxy Supabase Storage paths to public URL when using Supabase
+app.get('/uploads/*', async (req, res, next) => {
+    try {
+        if (!USE_SUPABASE) return next();
+        const relPath = req.params[0];
+        if (!relPath) return res.status(404).end();
+        if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+        const { data } = supabaseAdmin.storage.from(SUPABASE_BUCKET).getPublicUrl(relPath);
+        if (data && data.publicUrl) {
+            return res.redirect(302, data.publicUrl);
+        }
+        return res.status(404).end();
+    } catch (_) {
+        return next();
+    }
+});
 app.use('/uploads', express.static('uploads'));
 
 // Create uploads directory if it doesn't exist
