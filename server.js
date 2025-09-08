@@ -31,78 +31,36 @@ async function uploadFileToSupabaseStorage(localFile, destPath) {
     return data?.path || destPath;
 }
 
-// Signed Upload URL endpoint (Supabase Storage)
-app.post('/api/storage/signed-url', authenticateToken, async (req, res) => {
+// Ensure default admin exists in Supabase when using Supabase mode
+async function ensureSupabaseAdminUser() {
+    if (!USE_SUPABASE || !supabaseAdmin) return;
     try {
-        if (!USE_SUPABASE) return res.status(400).json({ message: 'Signed upload hanya untuk mode Supabase' });
-        if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
-        const { path: objectPath, contentType, bucket } = req.body || {};
-        const finalBucket = bucket || SUPABASE_BUCKET;
-        if (!objectPath) return res.status(400).json({ message: 'Path wajib diisi' });
-        const { data, error } = await supabaseAdmin
-            .storage
-            .from(finalBucket)
-            .createSignedUploadUrl(objectPath, { upsert: true, contentType: contentType || 'application/octet-stream', expiresIn: 600 });
-        if (error) return res.status(500).json({ message: 'Gagal membuat signed URL' });
-        return res.json({ bucket: finalBucket, path: data?.path || objectPath, signedUrl: data?.signedUrl, token: data?.token });
-    } catch (e) {
-        return res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Submit bantuan via JSON (tanpa multipart, file sudah diupload via signed URL)
-app.post('/api/bantuan/json', authenticateToken, async (req, res) => {
-    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
-    try {
-        const userId = req.user.id;
-        const { jenis_bantuan, alasan_pengajuan, gps_latitude, gps_longitude, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp } = req.body || {};
-        if (!jenis_bantuan || !alasan_pengajuan) return res.status(400).json({ message: 'Jenis bantuan dan alasan pengajuan wajib diisi' });
-        if (!foto_kk || !foto_rumah_depan || !foto_rumah_dalam || !foto_selfie_ktp) return res.status(400).json({ message: 'Semua foto wajib diupload' });
-        const { data, error } = await supabaseAdmin
-            .from('bantuan_sosial')
-            .insert([{ user_id: userId, jenis_bantuan, alasan_pengajuan, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp, foto_lokasi_rumah: null, gps_latitude: gps_latitude || null, gps_longitude: gps_longitude || null }])
-            .select('id')
+        const { data: existing, error } = await supabaseAdmin
+            .from('users')
+            .select('id, username')
+            .eq('role', 'admin')
+            .limit(1)
             .maybeSingle();
-        if (error) return res.status(500).json({ message: 'Server error' });
-        return res.json({ message: 'Ajuan bantuan sosial berhasil dikirim', bantuanId: data?.id || null });
-    } catch (e) {
-        return res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Submit sanggahan via JSON (file bukti sudah diupload via signed URL)
-app.post('/api/sanggahan/json', authenticateToken, async (req, res) => {
-    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
-    try {
-        const pelaporId = req.user.id;
-        const { jenis_sanggahan, alasan_sanggahan, nik_warga_lain, bukti_file } = req.body || {};
-        if (!jenis_sanggahan || !alasan_sanggahan) return res.status(400).json({ message: 'Jenis sanggahan dan alasan wajib diisi' });
-        if (!['diri_sendiri', 'warga_lain'].includes(jenis_sanggahan)) return res.status(400).json({ message: 'Jenis sanggahan tidak valid' });
-        let targetUserId = null;
-        if (jenis_sanggahan === 'warga_lain') {
-            if (!nik_warga_lain) return res.status(400).json({ message: 'NIK warga yang disanggah wajib diisi' });
-            const { data: target, error } = await supabaseAdmin
-                .from('users')
-                .select('id')
-                .eq('nik', nik_warga_lain)
-                .eq('role', 'warga')
-                .limit(1)
-                .maybeSingle();
-            if (error) return res.status(500).json({ message: 'Server error' });
-            if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
-            targetUserId = target.id;
+        if (error) {
+            console.warn('[Boot] Gagal cek admin Supabase:', error.message);
+            return;
         }
-        const { data, error: insertErr } = await supabaseAdmin
-            .from('sanggahan')
-            .insert([{ pelapor_user_id: pelaporId, target_user_id: targetUserId, tipe: jenis_sanggahan, alasan: alasan_sanggahan, bukti_file: bukti_file || null }])
-            .select('id')
-            .maybeSingle();
-        if (insertErr) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
-        return res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: data?.id || null });
+        if (!existing) {
+            const hashed = bcrypt.hashSync('admin123', 10);
+            const { error: insErr } = await supabaseAdmin
+                .from('users')
+                .insert([{ username: 'admin', nama: 'Admin Kelurahan', password: hashed, role: 'admin', verified: true }]);
+            if (insErr) {
+                console.warn('[Boot] Gagal membuat admin default di Supabase:', insErr.message);
+            } else {
+                console.log('[Boot] Admin default dibuat di Supabase: username=admin password=admin123');
+            }
+        }
     } catch (e) {
-        return res.status(500).json({ message: 'Server error' });
+        console.warn('[Boot] ensureSupabaseAdminUser exception');
     }
-});
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware
@@ -299,7 +257,10 @@ app.post('/api/admin/login', async (req, res) => {
                 .eq('role', 'admin')
                 .limit(1)
                 .maybeSingle();
-            if (error) return res.status(500).json({ message: 'Server error' });
+            if (error) {
+                console.error('[AdminLogin][Supabase] Query error:', error);
+                return res.status(500).json({ message: 'Server error' });
+            }
             const user = data;
             if (!user || !bcrypt.compareSync(password, user.password)) {
                 return res.status(401).json({ message: 'Username atau password salah' });
@@ -374,7 +335,10 @@ app.post('/api/warga/register', async (req, res) => {
                 .eq('nik', nik)
                 .limit(1)
                 .maybeSingle();
-            if (errNik) return res.status(500).json({ message: 'Server error' });
+            if (errNik) {
+                console.error('[Register][Supabase] Cek NIK error:', errNik);
+                return res.status(500).json({ message: 'Server error' });
+            }
             if (existingNik) {
                 if (existingNik.verified === 1 || existingNik.verified === true) {
                     return res.status(400).json({ message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.', code: 'NIK_VERIFIED_EXISTS' });
@@ -387,7 +351,10 @@ app.post('/api/warga/register', async (req, res) => {
                 .eq('email', email)
                 .limit(1)
                 .maybeSingle();
-            if (errEmail) return res.status(500).json({ message: 'Server error' });
+            if (errEmail) {
+                console.error('[Register][Supabase] Cek email error:', errEmail);
+                return res.status(500).json({ message: 'Server error' });
+            }
             if (existingEmail) return res.status(400).json({ message: 'Email sudah terdaftar' });
 
             const hashedPassword = bcrypt.hashSync(password, 10);
@@ -396,9 +363,13 @@ app.post('/api/warga/register', async (req, res) => {
                 .insert([{ nik, kk, nama, email, phone, rt, rw, alamat, password: hashedPassword, role: 'warga', verified: 0 }])
                 .select('id')
                 .maybeSingle();
-            if (insertErr) return res.status(500).json({ message: 'Gagal mendaftar' });
+            if (insertErr) {
+                console.error('[Register][Supabase] Insert error:', insertErr);
+                return res.status(500).json({ message: 'Gagal mendaftar' });
+            }
             return res.json({ message: 'Pendaftaran berhasil. Akun Anda akan diverifikasi oleh admin.', userId: inserted?.id || null });
         } catch (_) {
+            console.error('[Register][Supabase] Unknown error');
             return res.status(500).json({ message: 'Server error' });
         }
     } else {
@@ -575,19 +546,39 @@ app.get('/api/admin/users', authenticateToken, (req, res) => {
         return res.status(403).json({ message: 'Akses ditolak' });
     }
 
-    db.all('SELECT * FROM users WHERE role = "warga" ORDER BY created_at DESC', (err, users) => {
-        if (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        // Remove password from response
-        const safeUsers = users.map(user => {
-            const { password, ...safeUser } = user;
-            return safeUser;
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                const { data, error } = await supabaseAdmin
+                    .from('users')
+                    .select('*')
+                    .eq('role', 'warga')
+                    .order('created_at', { ascending: false });
+                if (error) {
+                    console.error('[AdminUsers][Supabase] Query error:', error);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                const safe = (data || []).map(u => {
+                    const { password, ...rest } = u || {};
+                    return rest;
+                });
+                return res.json(safe);
+            } catch (e) {
+                return res.status(500).json({ message: 'Server error' });
+            }
+        })();
+    } else {
+        db.all('SELECT * FROM users WHERE role = "warga" ORDER BY created_at DESC', (err, users) => {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
+            }
+            const safeUsers = users.map(user => {
+                const { password, ...safeUser } = user;
+                return safeUser;
+            });
+            res.json(safeUsers);
         });
-
-        res.json(safeUsers);
-    });
+    }
 });
 
 // Verify user
@@ -1182,6 +1173,79 @@ app.delete('/api/admin/sanggahan/:id', authenticateToken, (req, res) => {
     });
 });
 
+// Signed Upload URL endpoint (Supabase Storage)
+app.post('/api/storage/signed-url', authenticateToken, async (req, res) => {
+    try {
+        if (!USE_SUPABASE) return res.status(400).json({ message: 'Signed upload hanya untuk mode Supabase' });
+        if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+        const { path: objectPath, contentType, bucket } = req.body || {};
+        const finalBucket = bucket || SUPABASE_BUCKET;
+        if (!objectPath) return res.status(400).json({ message: 'Path wajib diisi' });
+        const { data, error } = await supabaseAdmin
+            .storage
+            .from(finalBucket)
+            .createSignedUploadUrl(objectPath, { upsert: true, contentType: contentType || 'application/octet-stream', expiresIn: 600 });
+        if (error) return res.status(500).json({ message: 'Gagal membuat signed URL' });
+        return res.json({ bucket: finalBucket, path: data?.path || objectPath, signedUrl: data?.signedUrl, token: data?.token });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Submit bantuan via JSON (tanpa multipart, file sudah diupload via signed URL)
+app.post('/api/bantuan/json', authenticateToken, async (req, res) => {
+    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
+    try {
+        const userId = req.user.id;
+        const { jenis_bantuan, alasan_pengajuan, gps_latitude, gps_longitude, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp } = req.body || {};
+        if (!jenis_bantuan || !alasan_pengajuan) return res.status(400).json({ message: 'Jenis bantuan dan alasan pengajuan wajib diisi' });
+        if (!foto_kk || !foto_rumah_depan || !foto_rumah_dalam || !foto_selfie_ktp) return res.status(400).json({ message: 'Semua foto wajib diupload' });
+        const { data, error } = await supabaseAdmin
+            .from('bantuan_sosial')
+            .insert([{ user_id: userId, jenis_bantuan, alasan_pengajuan, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp, foto_lokasi_rumah: null, gps_latitude: gps_latitude || null, gps_longitude: gps_longitude || null }])
+            .select('id')
+            .maybeSingle();
+        if (error) return res.status(500).json({ message: 'Server error' });
+        return res.json({ message: 'Ajuan bantuan sosial berhasil dikirim', bantuanId: data?.id || null });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Submit sanggahan via JSON (file bukti sudah diupload via signed URL)
+app.post('/api/sanggahan/json', authenticateToken, async (req, res) => {
+    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
+    try {
+        const pelaporId = req.user.id;
+        const { jenis_sanggahan, alasan_sanggahan, nik_warga_lain, bukti_file } = req.body || {};
+        if (!jenis_sanggahan || !alasan_sanggahan) return res.status(400).json({ message: 'Jenis sanggahan dan alasan wajib diisi' });
+        if (!['diri_sendiri', 'warga_lain'].includes(jenis_sanggahan)) return res.status(400).json({ message: 'Jenis sanggahan tidak valid' });
+        let targetUserId = null;
+        if (jenis_sanggahan === 'warga_lain') {
+            if (!nik_warga_lain) return res.status(400).json({ message: 'NIK warga yang disanggah wajib diisi' });
+            const { data: target, error } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('nik', nik_warga_lain)
+                .eq('role', 'warga')
+                .limit(1)
+                .maybeSingle();
+            if (error) return res.status(500).json({ message: 'Server error' });
+            if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
+            targetUserId = target.id;
+        }
+        const { data, error: insertErr } = await supabaseAdmin
+            .from('sanggahan')
+            .insert([{ pelapor_user_id: pelaporId, target_user_id: targetUserId, tipe: jenis_sanggahan, alasan: alasan_sanggahan, bukti_file: bukti_file || null }])
+            .select('id')
+            .maybeSingle();
+        if (insertErr) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
+        return res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: data?.id || null });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Get user's bantuan sosial
 app.get('/api/bantuan', authenticateToken, (req, res) => {
     const userId = req.user.id;
@@ -1446,6 +1510,11 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server berjalan di http://localhost:${PORT}`);
     console.log(`Akses dari mobile: http://[IP-ADDRESS]:${PORT}`);
     console.log(`Contoh: http://192.168.1.100:${PORT}`);
+    console.log('[Boot] USE_SUPABASE =', USE_SUPABASE);
+    console.log('[Boot] SUPABASE_URL terisi =', !!process.env.SUPABASE_URL);
+    console.log('[Boot] SUPABASE_ANON_KEY terisi =', !!process.env.SUPABASE_ANON_KEY);
+    console.log('[Boot] SUPABASE_SERVICE_ROLE_KEY terisi =', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    ensureSupabaseAdminUser();
 });
 
 // Graceful shutdown
