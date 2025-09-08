@@ -325,6 +325,20 @@
         </div>
     </div>
 
+    <!-- Supabase Browser SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Konfigurasi Supabase untuk browser (isi via build/replace manual) -->
+    <script>
+        window.SUPABASE_URL = window.SUPABASE_URL || '';
+        window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
+    </script>
+    <script>
+  window.SUPABASE_URL = 'https://hxlvhtwysnpkgehzwuzc.supabase.co';
+  window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4bHZodHd5c25wa2dlaHp3dXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczMTUwNjAsImV4cCI6MjA3Mjg5MTA2MH0.oq2JorZKuGSiWGTK36uWYYW7UGmevoqL_GG1PHRbgdA';
+</script>
+    </script>
+    <script src="assets/js/supabase-client-browser.js"></script>
+    <script src="assets/js/frontend-supabase-integration.js"></script>
     <script src="assets/js/script.js"></script>
     
     <!-- Service Worker Registration -->

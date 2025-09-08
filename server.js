@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -6,10 +7,103 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { supabase, supabaseAdmin } = require('./supabaseClient');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'your-secret-key-change-in-production';
+const USE_SUPABASE = String(process.env.USE_SUPABASE || '').toLowerCase() === 'true';
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'bansos-uploads';
+
+// Helper: upload file ke Supabase Storage
+async function uploadFileToSupabaseStorage(localFile, destPath) {
+    if (!supabaseAdmin) throw new Error('Supabase belum dikonfigurasi');
+    const fileBuffer = fs.readFileSync(localFile.path);
+    const { data, error } = await supabaseAdmin
+        .storage
+        .from(SUPABASE_BUCKET)
+        .upload(destPath, fileBuffer, {
+            contentType: localFile.mimetype || 'application/octet-stream',
+            upsert: true
+        });
+    if (error) throw error;
+    // Hapus file lokal setelah upload
+    try { fs.unlinkSync(localFile.path); } catch (_) {}
+    return data?.path || destPath;
+}
+
+// Signed Upload URL endpoint (Supabase Storage)
+app.post('/api/storage/signed-url', authenticateToken, async (req, res) => {
+    try {
+        if (!USE_SUPABASE) return res.status(400).json({ message: 'Signed upload hanya untuk mode Supabase' });
+        if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+        const { path: objectPath, contentType, bucket } = req.body || {};
+        const finalBucket = bucket || SUPABASE_BUCKET;
+        if (!objectPath) return res.status(400).json({ message: 'Path wajib diisi' });
+        const { data, error } = await supabaseAdmin
+            .storage
+            .from(finalBucket)
+            .createSignedUploadUrl(objectPath, { upsert: true, contentType: contentType || 'application/octet-stream', expiresIn: 600 });
+        if (error) return res.status(500).json({ message: 'Gagal membuat signed URL' });
+        return res.json({ bucket: finalBucket, path: data?.path || objectPath, signedUrl: data?.signedUrl, token: data?.token });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Submit bantuan via JSON (tanpa multipart, file sudah diupload via signed URL)
+app.post('/api/bantuan/json', authenticateToken, async (req, res) => {
+    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
+    try {
+        const userId = req.user.id;
+        const { jenis_bantuan, alasan_pengajuan, gps_latitude, gps_longitude, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp } = req.body || {};
+        if (!jenis_bantuan || !alasan_pengajuan) return res.status(400).json({ message: 'Jenis bantuan dan alasan pengajuan wajib diisi' });
+        if (!foto_kk || !foto_rumah_depan || !foto_rumah_dalam || !foto_selfie_ktp) return res.status(400).json({ message: 'Semua foto wajib diupload' });
+        const { data, error } = await supabaseAdmin
+            .from('bantuan_sosial')
+            .insert([{ user_id: userId, jenis_bantuan, alasan_pengajuan, foto_kk, foto_rumah_depan, foto_rumah_dalam, foto_selfie_ktp, foto_lokasi_rumah: null, gps_latitude: gps_latitude || null, gps_longitude: gps_longitude || null }])
+            .select('id')
+            .maybeSingle();
+        if (error) return res.status(500).json({ message: 'Server error' });
+        return res.json({ message: 'Ajuan bantuan sosial berhasil dikirim', bantuanId: data?.id || null });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Submit sanggahan via JSON (file bukti sudah diupload via signed URL)
+app.post('/api/sanggahan/json', authenticateToken, async (req, res) => {
+    if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });
+    try {
+        const pelaporId = req.user.id;
+        const { jenis_sanggahan, alasan_sanggahan, nik_warga_lain, bukti_file } = req.body || {};
+        if (!jenis_sanggahan || !alasan_sanggahan) return res.status(400).json({ message: 'Jenis sanggahan dan alasan wajib diisi' });
+        if (!['diri_sendiri', 'warga_lain'].includes(jenis_sanggahan)) return res.status(400).json({ message: 'Jenis sanggahan tidak valid' });
+        let targetUserId = null;
+        if (jenis_sanggahan === 'warga_lain') {
+            if (!nik_warga_lain) return res.status(400).json({ message: 'NIK warga yang disanggah wajib diisi' });
+            const { data: target, error } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('nik', nik_warga_lain)
+                .eq('role', 'warga')
+                .limit(1)
+                .maybeSingle();
+            if (error) return res.status(500).json({ message: 'Server error' });
+            if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
+            targetUserId = target.id;
+        }
+        const { data, error: insertErr } = await supabaseAdmin
+            .from('sanggahan')
+            .insert([{ pelapor_user_id: pelaporId, target_user_id: targetUserId, tipe: jenis_sanggahan, alasan: alasan_sanggahan, bukti_file: bukti_file || null }])
+            .select('id')
+            .maybeSingle();
+        if (insertErr) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
+        return res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: data?.id || null });
+    } catch (e) {
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware
 app.use(cors());
@@ -193,39 +287,60 @@ app.get('/', (req, res) => {
 });
 
 // Admin login
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
-
-    db.get('SELECT * FROM users WHERE username = ? AND role = "admin"', [username], (err, user) => {
-        if (err) {
+    if (USE_SUPABASE) {
+        try {
+            if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+            const { data, error } = await supabaseAdmin
+                .from('users')
+                .select('*')
+                .eq('username', username)
+                .eq('role', 'admin')
+                .limit(1)
+                .maybeSingle();
+            if (error) return res.status(500).json({ message: 'Server error' });
+            const user = data;
+            if (!user || !bcrypt.compareSync(password, user.password)) {
+                return res.status(401).json({ message: 'Username atau password salah' });
+            }
+            const token = jwt.sign(
+                { id: user.id, username: user.username, role: user.role },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+            return res.json({
+                message: 'Login berhasil',
+                token,
+                user: { id: user.id, username: user.username, nama: user.nama, role: user.role }
+            });
+        } catch (_) {
             return res.status(500).json({ message: 'Server error' });
         }
-
-        if (!user || !bcrypt.compareSync(password, user.password)) {
-            return res.status(401).json({ message: 'Username atau password salah' });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            message: 'Login berhasil',
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-                nama: user.nama,
-                role: user.role
+    } else {
+        db.get('SELECT * FROM users WHERE username = ? AND role = "admin"', [username], (err, user) => {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
             }
+            if (!user || !bcrypt.compareSync(password, user.password)) {
+                return res.status(401).json({ message: 'Username atau password salah' });
+            }
+            const token = jwt.sign(
+                { id: user.id, username: user.username, role: user.role },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+            res.json({
+                message: 'Login berhasil',
+                token,
+                user: { id: user.id, username: user.username, nama: user.nama, role: user.role }
+            });
         });
-    });
+    }
 });
 
 // Warga registration
-app.post('/api/warga/register', (req, res) => {
+app.post('/api/warga/register', async (req, res) => {
     const { nik, kk, nama, email, phone, rt, rw, alamat, password } = req.body;
 
     // Validate required fields
@@ -250,55 +365,83 @@ app.post('/api/warga/register', (req, res) => {
         return res.status(400).json({ message: 'Format RW harus diawali 00 (3-4 digit)' });
     }
 
-    // Check if NIK already exists (prevent re-register)
-    db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
-        if (err) {
+    if (USE_SUPABASE) {
+        try {
+            if (!supabaseAdmin || !supabase) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+            const { data: existingNik, error: errNik } = await supabaseAdmin
+                .from('users')
+                .select('id, verified')
+                .eq('nik', nik)
+                .limit(1)
+                .maybeSingle();
+            if (errNik) return res.status(500).json({ message: 'Server error' });
+            if (existingNik) {
+                if (existingNik.verified === 1 || existingNik.verified === true) {
+                    return res.status(400).json({ message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.', code: 'NIK_VERIFIED_EXISTS' });
+                }
+                return res.status(400).json({ message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.', code: 'NIK_PENDING_VERIFICATION' });
+            }
+            const { data: existingEmail, error: errEmail } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('email', email)
+                .limit(1)
+                .maybeSingle();
+            if (errEmail) return res.status(500).json({ message: 'Server error' });
+            if (existingEmail) return res.status(400).json({ message: 'Email sudah terdaftar' });
+
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            const { data: inserted, error: insertErr } = await supabaseAdmin
+                .from('users')
+                .insert([{ nik, kk, nama, email, phone, rt, rw, alamat, password: hashedPassword, role: 'warga', verified: 0 }])
+                .select('id')
+                .maybeSingle();
+            if (insertErr) return res.status(500).json({ message: 'Gagal mendaftar' });
+            return res.json({ message: 'Pendaftaran berhasil. Akun Anda akan diverifikasi oleh admin.', userId: inserted?.id || null });
+        } catch (_) {
             return res.status(500).json({ message: 'Server error' });
         }
-
-        if (existingUser) {
-            if (existingUser.verified === 1) {
-                return res.status(400).json({ 
-                    message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.',
-                    code: 'NIK_VERIFIED_EXISTS'
-                });
-            } else {
-                return res.status(400).json({ 
-                    message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.',
-                    code: 'NIK_PENDING_VERIFICATION'
-                });
-            }
-        }
-
-        // Check if email already exists
-        db.get('SELECT id FROM users WHERE email = ?', [email], (err, existingEmail) => {
+    } else {
+        // Check if NIK already exists (prevent re-register)
+        db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
             if (err) {
                 return res.status(500).json({ message: 'Server error' });
             }
-
-            if (existingEmail) {
-                return res.status(400).json({ message: 'Email sudah terdaftar' });
-            }
-
-            // Hash password and insert user
-            const hashedPassword = bcrypt.hashSync(password, 10);
-            
-            db.run(
-                'INSERT INTO users (nik, kk, nama, email, phone, rt, rw, alamat, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [nik, kk, nama, email, phone, rt, rw, alamat, hashedPassword],
-                function(err) {
-                    if (err) {
-                        return res.status(500).json({ message: 'Gagal mendaftar' });
-                    }
-
-                    res.json({
-                        message: 'Pendaftaran berhasil. Akun Anda akan diverifikasi oleh admin.',
-                        userId: this.lastID
+            if (existingUser) {
+                if (existingUser.verified === 1) {
+                    return res.status(400).json({ 
+                        message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.',
+                        code: 'NIK_VERIFIED_EXISTS'
+                    });
+                } else {
+                    return res.status(400).json({ 
+                        message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.',
+                        code: 'NIK_PENDING_VERIFICATION'
                     });
                 }
-            );
+            }
+            // Check if email already exists
+            db.get('SELECT id FROM users WHERE email = ?', [email], (err, existingEmail) => {
+                if (err) {
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                if (existingEmail) {
+                    return res.status(400).json({ message: 'Email sudah terdaftar' });
+                }
+                const hashedPassword = bcrypt.hashSync(password, 10);
+                db.run(
+                    'INSERT INTO users (nik, kk, nama, email, phone, rt, rw, alamat, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [nik, kk, nama, email, phone, rt, rw, alamat, hashedPassword],
+                    function(err) {
+                        if (err) {
+                            return res.status(500).json({ message: 'Gagal mendaftar' });
+                        }
+                        res.json({ message: 'Pendaftaran berhasil. Akun Anda akan diverifikasi oleh admin.', userId: this.lastID });
+                    }
+                );
+            });
         });
-    });
+    }
 });
 
 // Check NIK availability
@@ -347,45 +490,83 @@ app.post('/api/warga/check-nik', (req, res) => {
 });
 
 // Warga login
-app.post('/api/warga/login', (req, res) => {
+app.post('/api/warga/login', async (req, res) => {
     const { nik, password } = req.body;
-
-    db.get('SELECT * FROM users WHERE nik = ? AND role = "warga"', [nik], (err, user) => {
-        if (err) {
+    if (USE_SUPABASE) {
+        try {
+            if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+            const { data: user, error } = await supabaseAdmin
+                .from('users')
+                .select('*')
+                .eq('nik', nik)
+                .eq('role', 'warga')
+                .limit(1)
+                .maybeSingle();
+            if (error) return res.status(500).json({ message: 'Server error' });
+            if (!user || !bcrypt.compareSync(password, user.password)) {
+                return res.status(401).json({ message: 'NIK atau password salah' });
+            }
+            if (!user.verified) {
+                return res.status(401).json({ message: 'Akun Anda belum diverifikasi oleh admin' });
+            }
+            const token = jwt.sign(
+                { id: user.id, nik: user.nik, role: user.role },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+            return res.json({
+                message: 'Login berhasil',
+                token,
+                user: {
+                    id: user.id,
+                    nik: user.nik,
+                    kk: user.kk,
+                    nama: user.nama,
+                    email: user.email,
+                    phone: user.phone,
+                    rt: user.rt,
+                    rw: user.rw,
+                    alamat: user.alamat,
+                    role: user.role
+                }
+            });
+        } catch (_) {
             return res.status(500).json({ message: 'Server error' });
         }
-
-        if (!user || !bcrypt.compareSync(password, user.password)) {
-            return res.status(401).json({ message: 'NIK atau password salah' });
-        }
-
-        if (!user.verified) {
-            return res.status(401).json({ message: 'Akun Anda belum diverifikasi oleh admin' });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, nik: user.nik, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            message: 'Login berhasil',
-            token,
-            user: {
-                id: user.id,
-                nik: user.nik,
-                kk: user.kk,
-                nama: user.nama,
-                email: user.email,
-                phone: user.phone,
-                rt: user.rt,
-                rw: user.rw,
-                alamat: user.alamat,
-                role: user.role
+    } else {
+        db.get('SELECT * FROM users WHERE nik = ? AND role = "warga"', [nik], (err, user) => {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
             }
+            if (!user || !bcrypt.compareSync(password, user.password)) {
+                return res.status(401).json({ message: 'NIK atau password salah' });
+            }
+            if (!user.verified) {
+                return res.status(401).json({ message: 'Akun Anda belum diverifikasi oleh admin' });
+            }
+            const token = jwt.sign(
+                { id: user.id, nik: user.nik, role: user.role },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+            res.json({
+                message: 'Login berhasil',
+                token,
+                user: {
+                    id: user.id,
+                    nik: user.nik,
+                    kk: user.kk,
+                    nama: user.nama,
+                    email: user.email,
+                    phone: user.phone,
+                    rt: user.rt,
+                    rw: user.rw,
+                    alamat: user.alamat,
+                    role: user.role
+                }
+            });
         });
-    });
+    }
 });
 
 // Get all users for admin verification
@@ -586,31 +767,67 @@ app.post('/api/bantuan', authenticateToken, upload.fields([
         }
     }
 
-    db.run(
-        `INSERT INTO bantuan_sosial (
-            user_id, jenis_bantuan, alasan_pengajuan, 
-            foto_kk, foto_rumah_depan, foto_rumah_dalam, 
-            foto_selfie_ktp, foto_lokasi_rumah, 
-            gps_latitude, gps_longitude
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-            userId, jenis_bantuan, alasan_pengajuan,
-            fileNames.fotoKK, fileNames.fotoRumahDepan, fileNames.fotoRumahDalam,
-            fileNames.fotoSelfieKTP, null, // foto_lokasi_rumah tidak digunakan, hanya GPS
-            gps_latitude || null, gps_longitude || null
-        ],
-        function(err) {
-            if (err) {
-                console.error('Database error:', err);
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                // upload files ke Supabase Storage
+                const uploaded = {};
+                for (const key of Object.keys(fileNames)) {
+                    const f = req.files[key][0];
+                    const dest = `users/${userId}/${Date.now()}-${f.originalname}`;
+                    uploaded[key] = await uploadFileToSupabaseStorage(f, dest);
+                }
+                const { data, error } = await supabaseAdmin
+                    .from('bantuan_sosial')
+                    .insert([
+                        {
+                            user_id: userId,
+                            jenis_bantuan,
+                            alasan_pengajuan,
+                            foto_kk: uploaded.fotoKK,
+                            foto_rumah_depan: uploaded.fotoRumahDepan,
+                            foto_rumah_dalam: uploaded.fotoRumahDalam,
+                            foto_selfie_ktp: uploaded.fotoSelfieKTP,
+                            foto_lokasi_rumah: null,
+                            gps_latitude: gps_latitude || null,
+                            gps_longitude: gps_longitude || null
+                        }
+                    ])
+                    .select('id')
+                    .maybeSingle();
+                if (error) {
+                    console.error('Supabase error:', error);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                return res.json({ message: 'Ajuan bantuan sosial berhasil dikirim', bantuanId: data?.id || null });
+            } catch (e) {
+                console.error('Upload/insert error:', e);
                 return res.status(500).json({ message: 'Server error' });
             }
-
-            res.json({
-                message: 'Ajuan bantuan sosial berhasil dikirim',
-                bantuanId: this.lastID
-            });
-        }
-    );
+        })();
+    } else {
+        db.run(
+            `INSERT INTO bantuan_sosial (
+                user_id, jenis_bantuan, alasan_pengajuan, 
+                foto_kk, foto_rumah_depan, foto_rumah_dalam, 
+                foto_selfie_ktp, foto_lokasi_rumah, 
+                gps_latitude, gps_longitude
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId, jenis_bantuan, alasan_pengajuan,
+                fileNames.fotoKK, fileNames.fotoRumahDepan, fileNames.fotoRumahDalam,
+                fileNames.fotoSelfieKTP, null,
+                gps_latitude || null, gps_longitude || null
+            ],
+            function(err) {
+                if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                res.json({ message: 'Ajuan bantuan sosial berhasil dikirim', bantuanId: this.lastID });
+            }
+        );
+    }
 });
 
 // Create sanggahan (by warga)
@@ -638,26 +855,61 @@ app.post('/api/sanggahan', authenticateToken, upload.single('bukti_sanggahan'), 
         }
     }
 
-    const insert = (targetUserId, buktiFile) => {
-        db.run(
-            'INSERT INTO sanggahan (pelapor_user_id, target_user_id, tipe, alasan, bukti_file) VALUES (?, ?, ?, ?, ?)',
-            [pelaporId, targetUserId || null, jenis_sanggahan, alasan_sanggahan, buktiFile || null],
-            function(err) {
-                if (err) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
-                res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: this.lastID });
+    const insert = async (targetUserId, buktiFile) => {
+        if (USE_SUPABASE) {
+            try {
+                let storedPath = null;
+                if (req.file) {
+                    const f = req.file;
+                    const dest = `sanggahan/${pelaporId}/${Date.now()}-${f.originalname}`;
+                    storedPath = await uploadFileToSupabaseStorage(f, dest);
+                }
+                const { data, error } = await supabaseAdmin
+                    .from('sanggahan')
+                    .insert([{ pelapor_user_id: pelaporId, target_user_id: targetUserId || null, tipe: jenis_sanggahan, alasan: alasan_sanggahan, bukti_file: storedPath || buktiFile || null }])
+                    .select('id')
+                    .maybeSingle();
+                if (error) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
+                return res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: data?.id || null });
+            } catch (_) {
+                return res.status(500).json({ message: 'Gagal membuat sanggahan' });
             }
-        );
+        } else {
+            db.run(
+                'INSERT INTO sanggahan (pelapor_user_id, target_user_id, tipe, alasan, bukti_file) VALUES (?, ?, ?, ?, ?)',
+                [pelaporId, targetUserId || null, jenis_sanggahan, alasan_sanggahan, buktiFile || null],
+                function(err) {
+                    if (err) return res.status(500).json({ message: 'Gagal membuat sanggahan' });
+                    res.json({ message: 'Sanggahan berhasil dikirim', sanggahanId: this.lastID });
+                }
+            );
+        }
     };
 
     if (jenis_sanggahan === 'warga_lain') {
         if (!nik_warga_lain) {
             return res.status(400).json({ message: 'NIK warga yang disanggah wajib diisi' });
         }
-        db.get('SELECT id FROM users WHERE nik = ? AND role = "warga"', [nik_warga_lain], (err, target) => {
-            if (err) return res.status(500).json({ message: 'Server error' });
-            if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
-            insert(target.id, req.file ? req.file.filename : null);
-        });
+        if (USE_SUPABASE) {
+            (async () => {
+                const { data: target, error } = await supabaseAdmin
+                    .from('users')
+                    .select('id')
+                    .eq('nik', nik_warga_lain)
+                    .eq('role', 'warga')
+                    .limit(1)
+                    .maybeSingle();
+                if (error) return res.status(500).json({ message: 'Server error' });
+                if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
+                insert(target.id, req.file ? req.file.filename : null);
+            })();
+        } else {
+            db.get('SELECT id FROM users WHERE nik = ? AND role = "warga"', [nik_warga_lain], (err, target) => {
+                if (err) return res.status(500).json({ message: 'Server error' });
+                if (!target) return res.status(404).json({ message: 'Warga yang disanggah tidak ditemukan' });
+                insert(target.id, req.file ? req.file.filename : null);
+            });
+        }
     } else {
         insert(null, req.file ? req.file.filename : null);
     }
@@ -669,23 +921,41 @@ app.get('/api/sanggahan', authenticateToken, (req, res) => {
 
     console.log('Getting sanggahan for user:', userId);
 
-    db.all(`
-        SELECT s.*, p.nama AS pelapor_nama, p.nik AS pelapor_nik,
-               t.nama AS target_nama, t.nik AS target_nik
-        FROM sanggahan s
-        LEFT JOIN users p ON s.pelapor_user_id = p.id
-        LEFT JOIN users t ON s.target_user_id = t.id
-        WHERE s.pelapor_user_id = ?
-        ORDER BY s.created_at DESC
-    `, [userId], (err, rows) => {
-        if (err) {
-            console.error('Error getting sanggahan:', err);
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        console.log('Sanggahan data for user:', rows);
-        res.json(rows);
-    });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data, error } = await supabaseAdmin
+                .from('sanggahan')
+                .select('*, pelapor:users!sanggahan_pelapor_user_id_fkey(nama, nik), target:users!sanggahan_target_user_id_fkey(nama, nik)')
+                .eq('pelapor_user_id', userId)
+                .order('created_at', { ascending: false });
+            if (error) return res.status(500).json({ message: 'Server error' });
+            const mapped = (data || []).map(s => ({
+                ...s,
+                pelapor_nama: s.pelapor?.[0]?.nama || null,
+                pelapor_nik: s.pelapor?.[0]?.nik || null,
+                target_nama: s.target?.[0]?.nama || null,
+                target_nik: s.target?.[0]?.nik || null
+            }));
+            return res.json(mapped);
+        })();
+    } else {
+        db.all(`
+            SELECT s.*, p.nama AS pelapor_nama, p.nik AS pelapor_nik,
+                   t.nama AS target_nama, t.nik AS target_nik
+            FROM sanggahan s
+            LEFT JOIN users p ON s.pelapor_user_id = p.id
+            LEFT JOIN users t ON s.target_user_id = t.id
+            WHERE s.pelapor_user_id = ?
+            ORDER BY s.created_at DESC
+        `, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error getting sanggahan:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+            console.log('Sanggahan data for user:', rows);
+            res.json(rows);
+        });
+    }
 });
 
 // Get all sanggahan (admin)
@@ -693,17 +963,35 @@ app.get('/api/admin/sanggahan', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Akses ditolak' });
     }
-    db.all(`
-        SELECT s.*, p.nama AS pelapor_nama, p.nik AS pelapor_nik,
-               t.nama AS target_nama, t.nik AS target_nik
-        FROM sanggahan s
-        LEFT JOIN users p ON s.pelapor_user_id = p.id
-        LEFT JOIN users t ON s.target_user_id = t.id
-        ORDER BY s.created_at DESC
-    `, (err, rows) => {
-        if (err) return res.status(500).json({ message: 'Server error' });
-        res.json(rows);
-    });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data, error } = await supabaseAdmin
+                .from('sanggahan')
+                .select('*, pelapor:users!sanggahan_pelapor_user_id_fkey(nama, nik), target:users!sanggahan_target_user_id_fkey(nama, nik)')
+                .order('created_at', { ascending: false });
+            if (error) return res.status(500).json({ message: 'Server error' });
+            const mapped = (data || []).map(s => ({
+                ...s,
+                pelapor_nama: s.pelapor?.[0]?.nama || null,
+                pelapor_nik: s.pelapor?.[0]?.nik || null,
+                target_nama: s.target?.[0]?.nama || null,
+                target_nik: s.target?.[0]?.nik || null
+            }));
+            return res.json(mapped);
+        })();
+    } else {
+        db.all(`
+            SELECT s.*, p.nama AS pelapor_nama, p.nik AS pelapor_nik,
+                   t.nama AS target_nama, t.nik AS target_nik
+            FROM sanggahan s
+            LEFT JOIN users p ON s.pelapor_user_id = p.id
+            LEFT JOIN users t ON s.target_user_id = t.id
+            ORDER BY s.created_at DESC
+        `, (err, rows) => {
+            if (err) return res.status(500).json({ message: 'Server error' });
+            res.json(rows);
+        });
+    }
 });
 
 // Update sanggahan status (admin)
@@ -721,99 +1009,137 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
         return res.status(400).json({ message: 'Status tidak valid' });
     }
     
-    // First, get the sanggahan details
-    db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
-        if (err) {
-            console.error('Error getting sanggahan:', err);
-            return res.status(500).json({ message: 'Server error' });
-        }
-        
-        if (!sanggahan) {
-            return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
-        }
-        
-        console.log('Sanggahan details:', sanggahan);
-        
-        // Update sanggahan status
-        db.run('UPDATE sanggahan SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], function(err) {
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data: sanggahan, error: errGet } = await supabaseAdmin
+                .from('sanggahan')
+                .select('*')
+                .eq('id', id)
+                .maybeSingle();
+            if (errGet) return res.status(500).json({ message: 'Server error' });
+            if (!sanggahan) return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+
+            const { error: errUpdate } = await supabaseAdmin
+                .from('sanggahan')
+                .update({ status, updated_at: new Date().toISOString() })
+                .eq('id', id);
+            if (errUpdate) return res.status(500).json({ message: 'Server error' });
+
+            let targetUserId = null;
+            if (status === 'accepted') {
+                if (sanggahan.tipe === 'diri_sendiri') targetUserId = sanggahan.pelapor_user_id;
+                else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) targetUserId = sanggahan.target_user_id;
+                if (targetUserId) {
+                    await supabaseAdmin
+                        .from('bantuan_sosial')
+                        .update({ status: 'approved', rejection_reason: null, updated_at: new Date().toISOString() })
+                        .eq('user_id', targetUserId)
+                        .in('status', ['pending', 'rejected']);
+                }
+            }
+            if (status === 'rejected') {
+                if (sanggahan.tipe === 'diri_sendiri') targetUserId = sanggahan.pelapor_user_id;
+                else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) targetUserId = sanggahan.target_user_id;
+                if (targetUserId) {
+                    await supabaseAdmin
+                        .from('bantuan_sosial')
+                        .update({ status: 'rejected', rejection_reason: 'Ditolak berdasarkan sanggahan', updated_at: new Date().toISOString() })
+                        .eq('user_id', targetUserId)
+                        .in('status', ['pending', 'approved']);
+                }
+            }
+            return res.json({ message: 'Status sanggahan berhasil diperbarui' });
+        })();
+    } else {
+        // original SQLite flow
+        // First, get the sanggahan details
+        db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
             if (err) {
-                console.error('Error updating sanggahan status:', err);
+                console.error('Error getting sanggahan:', err);
                 return res.status(500).json({ message: 'Server error' });
             }
             
-            if (this.changes === 0) {
+            if (!sanggahan) {
                 return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
             }
             
-            console.log('Sanggahan status updated successfully');
+            console.log('Sanggahan details:', sanggahan);
             
-            // If sanggahan is accepted, update the bantuan status based on sanggahan type
-            if (status === 'accepted') {
-                console.log('Sanggahan accepted, updating bantuan status');
-                
-                let targetUserId = null;
-                
-                if (sanggahan.tipe === 'diri_sendiri') {
-                    // For self-sanggahan, update the pelapor's bantuan to approved
-                    targetUserId = sanggahan.pelapor_user_id;
-                    console.log('Self-sanggahan accepted, updating pelapor bantuan to approved');
-                } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
-                    // For other-warga sanggahan, update the target user's bantuan to approved
-                    targetUserId = sanggahan.target_user_id;
-                    console.log('Other-warga sanggahan accepted, updating target user bantuan to approved');
+            // Update sanggahan status
+            db.run('UPDATE sanggahan SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], function(err) {
+                if (err) {
+                    console.error('Error updating sanggahan status:', err);
+                    return res.status(500).json({ message: 'Server error' });
                 }
                 
-                if (targetUserId) {
-                    // Update all bantuan for the target user to approved (including rejected ones)
-                    db.run(`
-                        UPDATE bantuan_sosial 
-                        SET status = 'approved', rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP 
-                        WHERE user_id = ? AND (status = 'pending' OR status = 'rejected')
-                    `, [targetUserId], function(err) {
-                        if (err) {
-                            console.error('Error updating bantuan status:', err);
-                        } else {
-                            console.log('Bantuan status updated to approved:', this.changes, 'records for user:', targetUserId);
-                        }
-                    });
-                }
-            }
-            
-            // If sanggahan is rejected, update the bantuan status based on sanggahan type
-            if (status === 'rejected') {
-                console.log('Sanggahan rejected, updating bantuan status');
-                
-                let targetUserId = null;
-                
-                if (sanggahan.tipe === 'diri_sendiri') {
-                    // For self-sanggahan, update the pelapor's bantuan to rejected
-                    targetUserId = sanggahan.pelapor_user_id;
-                    console.log('Self-sanggahan rejected, updating pelapor bantuan to rejected');
-                } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
-                    // For other-warga sanggahan, update the target user's bantuan to rejected
-                    targetUserId = sanggahan.target_user_id;
-                    console.log('Other-warga sanggahan rejected, updating target user bantuan to rejected');
+                if (this.changes === 0) {
+                    return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
                 }
                 
-                if (targetUserId) {
-                    // Update all bantuan for the target user to rejected (including approved ones)
-                    db.run(`
-                        UPDATE bantuan_sosial 
-                        SET status = 'rejected', rejection_reason = 'Ditolak berdasarkan sanggahan', updated_at = CURRENT_TIMESTAMP 
-                        WHERE user_id = ? AND (status = 'pending' OR status = 'approved')
-                    `, [targetUserId], function(err) {
-                        if (err) {
-                            console.error('Error updating bantuan status:', err);
-                        } else {
-                            console.log('Bantuan status updated to rejected:', this.changes, 'records for user:', targetUserId);
-                        }
-                    });
+                console.log('Sanggahan status updated successfully');
+                
+                // If sanggahan is accepted, update the bantuan status based on sanggahan type
+                if (status === 'accepted') {
+                    console.log('Sanggahan accepted, updating bantuan status');
+                    
+                    let targetUserId = null;
+                    
+                    if (sanggahan.tipe === 'diri_sendiri') {
+                        targetUserId = sanggahan.pelapor_user_id;
+                        console.log('Self-sanggahan accepted, updating pelapor bantuan to approved');
+                    } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
+                        targetUserId = sanggahan.target_user_id;
+                        console.log('Other-warga sanggahan accepted, updating target user bantuan to approved');
+                    }
+                    
+                    if (targetUserId) {
+                        db.run(`
+                            UPDATE bantuan_sosial 
+                            SET status = 'approved', rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP 
+                            WHERE user_id = ? AND (status = 'pending' OR status = 'rejected')
+                        `, [targetUserId], function(err) {
+                            if (err) {
+                                console.error('Error updating bantuan status:', err);
+                            } else {
+                                console.log('Bantuan status updated to approved:', this.changes, 'records for user:', targetUserId);
+                            }
+                        });
+                    }
                 }
-            }
-            
-            res.json({ message: 'Status sanggahan berhasil diperbarui' });
+                
+                // If sanggahan is rejected, update the bantuan status based on sanggahan type
+                if (status === 'rejected') {
+                    console.log('Sanggahan rejected, updating bantuan status');
+                    
+                    let targetUserId = null;
+                    
+                    if (sanggahan.tipe === 'diri_sendiri') {
+                        targetUserId = sanggahan.pelapor_user_id;
+                        console.log('Self-sanggahan rejected, updating pelapor bantuan to rejected');
+                    } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
+                        targetUserId = sanggahan.target_user_id;
+                        console.log('Other-warga sanggahan rejected, updating target user bantuan to rejected');
+                    }
+                    
+                    if (targetUserId) {
+                        db.run(`
+                            UPDATE bantuan_sosial 
+                            SET status = 'rejected', rejection_reason = 'Ditolak berdasarkan sanggahan', updated_at = CURRENT_TIMESTAMP 
+                            WHERE user_id = ? AND (status = 'pending' OR status = 'approved')
+                        `, [targetUserId], function(err) {
+                            if (err) {
+                                console.error('Error updating bantuan status:', err);
+                            } else {
+                                console.log('Bantuan status updated to rejected:', this.changes, 'records for user:', targetUserId);
+                            }
+                        });
+                    }
+                }
+                
+                res.json({ message: 'Status sanggahan berhasil diperbarui' });
+            });
         });
-    });
+    }
 });
 
 // Delete sanggahan (admin)
@@ -862,19 +1188,30 @@ app.get('/api/bantuan', authenticateToken, (req, res) => {
 
     console.log('Getting bantuan for user:', userId);
 
-    db.all(
-        'SELECT * FROM bantuan_sosial WHERE user_id = ? ORDER BY created_at DESC',
-        [userId],
-        (err, bantuan) => {
-            if (err) {
-                console.error('Error getting bantuan:', err);
-                return res.status(500).json({ message: 'Server error' });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data, error } = await supabaseAdmin
+                .from('bantuan_sosial')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+            if (error) return res.status(500).json({ message: 'Server error' });
+            return res.json(data || []);
+        })();
+    } else {
+        db.all(
+            'SELECT * FROM bantuan_sosial WHERE user_id = ? ORDER BY created_at DESC',
+            [userId],
+            (err, bantuan) => {
+                if (err) {
+                    console.error('Error getting bantuan:', err);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                console.log('Bantuan data for user:', bantuan);
+                res.json(bantuan);
             }
-
-            console.log('Bantuan data for user:', bantuan);
-            res.json(bantuan);
-        }
-    );
+        );
+    }
 });
 
 // Get all bantuan sosial for admin
@@ -883,18 +1220,29 @@ app.get('/api/admin/bantuan', authenticateToken, (req, res) => {
         return res.status(403).json({ message: 'Akses ditolak' });
     }
 
-    db.all(`
-        SELECT bs.*, u.nama, u.nik 
-        FROM bantuan_sosial bs 
-        JOIN users u ON bs.user_id = u.id 
-        ORDER BY bs.created_at DESC
-    `, (err, bantuan) => {
-        if (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        res.json(bantuan);
-    });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data, error } = await supabaseAdmin
+                .from('bantuan_sosial')
+                .select('*, user:users!bantuan_sosial_user_id_fkey(nama, nik)')
+                .order('created_at', { ascending: false });
+            if (error) return res.status(500).json({ message: 'Server error' });
+            const mapped = (data || []).map(b => ({ ...b, nama: b.user?.[0]?.nama || null, nik: b.user?.[0]?.nik || null }));
+            return res.json(mapped);
+        })();
+    } else {
+        db.all(`
+            SELECT bs.*, u.nama, u.nik 
+            FROM bantuan_sosial bs 
+            JOIN users u ON bs.user_id = u.id 
+            ORDER BY bs.created_at DESC
+        `, (err, bantuan) => {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
+            }
+            res.json(bantuan);
+        });
+    }
 });
 
 // Update bantuan status
@@ -920,26 +1268,34 @@ app.put('/api/admin/bantuan/:id/status', authenticateToken, (req, res) => {
     }
 
     console.log('Executing SQL update for bantuan:', bantuanId);
-    db.run(
-        'UPDATE bantuan_sosial SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [status, reason || null, bantuanId],
-        function(err) {
-            if (err) {
-                console.error('Database error updating bantuan status:', err);
-                return res.status(500).json({ message: 'Server error: ' + err.message });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { error } = await supabaseAdmin
+                .from('bantuan_sosial')
+                .update({ status, rejection_reason: reason || null, updated_at: new Date().toISOString() })
+                .eq('id', bantuanId);
+            if (error) return res.status(500).json({ message: 'Server error: ' + error.message });
+            return res.json({ message: 'Status bantuan berhasil diupdate' });
+        })();
+    } else {
+        db.run(
+            'UPDATE bantuan_sosial SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [status, reason || null, bantuanId],
+            function(err) {
+                if (err) {
+                    console.error('Database error updating bantuan status:', err);
+                    return res.status(500).json({ message: 'Server error: ' + err.message });
+                }
+                console.log('Update result:', { changes: this.changes, lastID: this.lastID });
+                if (this.changes === 0) {
+                    console.log('No bantuan found with id:', bantuanId);
+                    return res.status(404).json({ message: 'Bantuan tidak ditemukan' });
+                }
+                console.log('Bantuan status updated successfully');
+                res.json({ message: 'Status bantuan berhasil diupdate' });
             }
-
-            console.log('Update result:', { changes: this.changes, lastID: this.lastID });
-
-            if (this.changes === 0) {
-                console.log('No bantuan found with id:', bantuanId);
-                return res.status(404).json({ message: 'Bantuan tidak ditemukan' });
-            }
-
-            console.log('Bantuan status updated successfully');
-            res.json({ message: 'Status bantuan berhasil diupdate' });
-        }
-    );
+        );
+    }
 });
 
 // Get statistics
