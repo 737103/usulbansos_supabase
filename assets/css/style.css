@@ -1338,11 +1338,7 @@ section {
     white-space: normal;
 }
 
-.table th:nth-child(4), .table td:nth-child(4) { /* Email */
-    min-width: 150px;
-    max-width: 200px;
-    word-break: break-all;
-}
+/* Email column styling removed - replaced by Alasan Pengajuan styling below */
 
 .table th:nth-child(5), .table td:nth-child(5) { /* No. Telepon */
     min-width: 120px;
@@ -1374,16 +1370,65 @@ section {
     text-align: center;
 }
 
+/* Special styling for Alasan Pengajuan column */
+.table th:nth-child(4), .table td:nth-child(4) { /* Alasan Pengajuan */
+    min-width: 200px;
+    max-width: 300px;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.4;
+    vertical-align: top;
+    padding: 0.8rem 0.6rem;
+}
+
+/* Special styling for Dokumen column */
+.table th:nth-child(5), .table td:nth-child(5) { /* Dokumen */
+    min-width: 120px;
+    max-width: 140px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Special styling for Bukti Pendukung column */
+.table th:nth-child(7), .table td:nth-child(7) { /* Bukti Pendukung */
+    min-width: 120px;
+    max-width: 140px;
+    text-align: center;
+    vertical-align: middle;
+}
+
 /* Responsive table improvements */
 @media (max-width: 768px) {
-    .table th:nth-child(4), .table td:nth-child(4) { /* Email */
-        min-width: 120px;
-        max-width: 150px;
+    .table th:nth-child(4), .table td:nth-child(4) { /* Alasan Pengajuan */
+        min-width: 150px;
+        max-width: 200px;
+        font-size: 0.8rem;
+    }
+    
+    .table th:nth-child(5), .table td:nth-child(5) { /* Dokumen */
+        min-width: 100px;
+        max-width: 120px;
+    }
+    
+    .table th:nth-child(7), .table td:nth-child(7) { /* Bukti Pendukung */
+        min-width: 100px;
+        max-width: 120px;
     }
     
     .table th:nth-child(8), .table td:nth-child(8) { /* Tanggal Daftar */
         min-width: 80px;
         max-width: 100px;
+    }
+    
+    .bukti-container {
+        min-width: 100px;
+    }
+    
+    .bukti-link,
+    .bukti-preview {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+        min-height: 32px;
     }
 }
 
@@ -2847,6 +2892,59 @@ button {
     }
 }
 
+/* Improved Bukti Pendukung Styles for Tables */
+.bukti-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+    min-width: 120px;
+}
+
+.bukti-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    width: 100%;
+    justify-content: center;
+    min-height: 36px;
+    box-sizing: border-box;
+}
+
+.bukti-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.bukti-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    background: #17a2b8;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    border: none;
+    width: 100%;
+    justify-content: center;
+    min-height: 36px;
+    box-sizing: border-box;
+}
+
+.bukti-preview:hover {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 /* Bukti Pendukung Styles */
 .settings-form .form-grid {
     display: grid;
@@ -2861,52 +2959,7 @@ button {
 @media (max-width: 768px) {
     .settings-form .form-grid { grid-template-columns: 1fr; }
 }
-.bukti-container {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: stretch;
-}
-
-.bukti-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
-    font-size: 0.8rem;
-    text-decoration: none;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    width: 110px; /* agar konsisten di tabel */
-    justify-content: center;
-}
-
-.bukti-link:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.bukti-preview {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
-    background: #17a2b8;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: all 0.3s ease;
-    border: none;
-    width: 110px; /* agar konsisten di tabel */
-    justify-content: center;
-}
-
-.bukti-preview:hover {
-    background: #138496;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
+/* Old bukti styles removed - replaced by improved styles above */
 
 .no-bukti {
     color: #6c757d;
@@ -3038,16 +3091,35 @@ button {
 }
 
 @media (max-width: 480px) {
+    .table th:nth-child(4), .table td:nth-child(4) { /* Alasan Pengajuan */
+        min-width: 120px;
+        max-width: 150px;
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+    
+    .table th:nth-child(5), .table td:nth-child(5) { /* Dokumen */
+        min-width: 80px;
+        max-width: 100px;
+    }
+    
+    .table th:nth-child(7), .table td:nth-child(7) { /* Bukti Pendukung */
+        min-width: 80px;
+        max-width: 100px;
+    }
+    
     .bukti-container {
         flex-direction: column;
         gap: 4px;
+        min-width: 80px;
     }
     
     .bukti-link,
     .bukti-preview {
-        padding: 4px 8px;
-        font-size: 0.72rem;
+        padding: 4px 6px;
+        font-size: 0.7rem;
         width: 100%;
+        min-height: 28px;
     }
     
     .bukti-modal-body {
