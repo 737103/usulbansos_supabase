@@ -588,22 +588,43 @@ app.put('/api/admin/users/:id/verify', authenticateToken, (req, res) => {
     }
 
     const userId = req.params.id;
-
-    db.run(
-        'UPDATE users SET verified = 1, verified_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [userId],
-        function(err) {
-            if (err) {
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                const { data: existing, error: getErr } = await supabaseAdmin
+                    .from('users')
+                    .select('id')
+                    .eq('id', userId)
+                    .eq('role', 'warga')
+                    .maybeSingle();
+                if (getErr) return res.status(500).json({ message: 'Server error' });
+                if (!existing) return res.status(404).json({ message: 'User tidak ditemukan' });
+                const { error: updErr } = await supabaseAdmin
+                    .from('users')
+                    .update({ verified: true, verified_at: new Date().toISOString() })
+                    .eq('id', userId)
+                    .eq('role', 'warga');
+                if (updErr) return res.status(500).json({ message: 'Server error' });
+                return res.json({ message: 'User berhasil diverifikasi' });
+            } catch (_) {
                 return res.status(500).json({ message: 'Server error' });
             }
-
-            if (this.changes === 0) {
-                return res.status(404).json({ message: 'User tidak ditemukan' });
+        })();
+    } else {
+        db.run(
+            'UPDATE users SET verified = 1, verified_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [userId],
+            function(err) {
+                if (err) {
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                if (this.changes === 0) {
+                    return res.status(404).json({ message: 'User tidak ditemukan' });
+                }
+                res.json({ message: 'User berhasil diverifikasi' });
             }
-
-            res.json({ message: 'User berhasil diverifikasi' });
-        }
-    );
+        );
+    }
 });
 
 // Reject user
@@ -613,18 +634,35 @@ app.delete('/api/admin/users/:id', authenticateToken, (req, res) => {
     }
 
     const userId = req.params.id;
-
-    db.run('DELETE FROM users WHERE id = ? AND role = "warga"', [userId], function(err) {
-        if (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        if (this.changes === 0) {
-            return res.status(404).json({ message: 'User tidak ditemukan' });
-        }
-
-        res.json({ message: 'User berhasil ditolak' });
-    });
+    if (USE_SUPABASE) {
+        (async () => {
+            const { data: existing, error: getErr } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('id', userId)
+                .eq('role', 'warga')
+                .maybeSingle();
+            if (getErr) return res.status(500).json({ message: 'Server error' });
+            if (!existing) return res.status(404).json({ message: 'User tidak ditemukan' });
+            const { error: delErr } = await supabaseAdmin
+                .from('users')
+                .delete()
+                .eq('id', userId)
+                .eq('role', 'warga');
+            if (delErr) return res.status(500).json({ message: 'Server error' });
+            return res.json({ message: 'User berhasil ditolak' });
+        })();
+    } else {
+        db.run('DELETE FROM users WHERE id = ? AND role = "warga"', [userId], function(err) {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ message: 'User tidak ditemukan' });
+            }
+            res.json({ message: 'User berhasil ditolak' });
+        });
+    }
 });
 
 // Update admin credentials (username/password)
@@ -1367,11 +1405,56 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Akses ditolak' });
     }
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                const countExact = { count: 'exact', head: true };
+                const [
+                    uTotal, uVerified,
+                    bTotal, bPKH, bBNPT, bNon,
+                    bApproved, bRejected, bPending,
+                    sTotal, sDiri, sWarga
+                ] = await Promise.all([
+                    supabaseAdmin.from('users').select('*', countExact).eq('role', 'warga'),
+                    supabaseAdmin.from('users').select('*', countExact).eq('role', 'warga').eq('verified', true),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).eq('jenis_bantuan', 'PKH'),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).eq('jenis_bantuan', 'BNPT'),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).not('jenis_bantuan', 'in', '(PKH,BNPT)'),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).eq('status', 'approved'),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).eq('status', 'rejected'),
+                    supabaseAdmin.from('bantuan_sosial').select('*', countExact).eq('status', 'pending'),
+                    supabaseAdmin.from('sanggahan').select('*', countExact),
+                    supabaseAdmin.from('sanggahan').select('*', countExact).eq('tipe', 'diri_sendiri'),
+                    supabaseAdmin.from('sanggahan').select('*', countExact).eq('tipe', 'warga_lain')
+                ]);
+                const stats = {
+                    totalUsers: uTotal?.count || 0,
+                    verifiedUsers: uVerified?.count || 0,
+                    pendingUsers: (uTotal?.count || 0) - (uVerified?.count || 0),
+                    totalBantuan: bTotal?.count || 0,
+                    pkh: bPKH?.count || 0,
+                    bnpt: bBNPT?.count || 0,
+                    nonBansos: bNon?.count || 0,
+                    approvedBantuan: bApproved?.count || 0,
+                    rejectedBantuan: bRejected?.count || 0,
+                    pendingBantuan: bPending?.count || 0,
+                    totalSanggahan: sTotal?.count || 0,
+                    sanggahanDiriSendiri: sDiri?.count || 0,
+                    sanggahanWargaLain: sWarga?.count || 0
+                };
+                return res.json(stats);
+            } catch (e) {
+                console.error('[Stats][Supabase] error:', e);
+                return res.status(500).json({ message: 'Server error' });
+            }
+        })();
+        return;
+    }
 
     const stats = {};
     let completedQueries = 0;
     const totalQueries = 10;
-
     const checkComplete = () => {
         completedQueries++;
         if (completedQueries === totalQueries) {
@@ -1379,128 +1462,68 @@ app.get('/api/admin/stats', authenticateToken, (req, res) => {
         }
     };
 
-    // Get user statistics
     db.get('SELECT COUNT(*) as total FROM users WHERE role = "warga"', (err, result) => {
         if (err) {
             console.error('Error getting total users:', err);
             stats.totalUsers = 0;
         } else {
-        stats.totalUsers = result.total;
+            stats.totalUsers = result.total;
         }
         checkComplete();
     });
-
-        db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
-            if (err) {
+    db.get('SELECT COUNT(*) as verified FROM users WHERE role = "warga" AND verified = 1', (err, result) => {
+        if (err) {
             console.error('Error getting verified users:', err);
             stats.verifiedUsers = 0;
         } else {
             stats.verifiedUsers = result.verified;
         }
-            stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
+        stats.pendingUsers = stats.totalUsers - stats.verifiedUsers;
         checkComplete();
     });
-
-            // Get bantuan statistics
-            db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
-                if (err) {
+    db.get('SELECT COUNT(*) as total FROM bantuan_sosial', (err, result) => {
+        if (err) {
             console.error('Error getting total bantuan:', err);
             stats.totalBantuan = 0;
         } else {
-                stats.totalBantuan = result.total;
+            stats.totalBantuan = result.total;
         }
         checkComplete();
     });
-
-    // Get bantuan by jenis - using proper COUNT queries
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan = "PKH"', (err, result) => {
-        if (err) {
-            console.error('Error getting PKH count:', err);
-            stats.pkh = 0;
-        } else {
-            stats.pkh = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting PKH count:', err); stats.pkh = 0; } else { stats.pkh = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan = "BNPT"', (err, result) => {
-        if (err) {
-            console.error('Error getting BNPT count:', err);
-            stats.bnpt = 0;
-        } else {
-            stats.bnpt = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting BNPT count:', err); stats.bnpt = 0; } else { stats.bnpt = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE jenis_bantuan NOT IN ("PKH", "BNPT")', (err, result) => {
-        if (err) {
-            console.error('Error getting non-bansos count:', err);
-            stats.nonBansos = 0;
-        } else {
-            stats.nonBansos = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting non-bansos count:', err); stats.nonBansos = 0; } else { stats.nonBansos = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "approved"', (err, result) => {
-        if (err) {
-            console.error('Error getting approved bantuan:', err);
-            stats.approvedBantuan = 0;
-        } else {
-            stats.approvedBantuan = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting approved bantuan:', err); stats.approvedBantuan = 0; } else { stats.approvedBantuan = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "rejected"', (err, result) => {
-        if (err) {
-            console.error('Error getting rejected bantuan:', err);
-            stats.rejectedBantuan = 0;
-        } else {
-            stats.rejectedBantuan = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting rejected bantuan:', err); stats.rejectedBantuan = 0; } else { stats.rejectedBantuan = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM bantuan_sosial WHERE status = "pending"', (err, result) => {
-        if (err) {
-            console.error('Error getting pending bantuan:', err);
-            stats.pendingBantuan = 0;
-        } else {
-            stats.pendingBantuan = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting pending bantuan:', err); stats.pendingBantuan = 0; } else { stats.pendingBantuan = result ? result.count : 0; }
         checkComplete();
     });
-
-    // Get sanggahan statistics
     db.get('SELECT COUNT(*) as count FROM sanggahan', (err, result) => {
-        if (err) {
-            console.error('Error getting total sanggahan:', err);
-            stats.totalSanggahan = 0;
-        } else {
-            stats.totalSanggahan = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting total sanggahan:', err); stats.totalSanggahan = 0; } else { stats.totalSanggahan = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM sanggahan WHERE tipe = "diri_sendiri"', (err, result) => {
-        if (err) {
-            console.error('Error getting diri sendiri sanggahan:', err);
-            stats.sanggahanDiriSendiri = 0;
-        } else {
-            stats.sanggahanDiriSendiri = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting diri sendiri sanggahan:', err); stats.sanggahanDiriSendiri = 0; } else { stats.sanggahanDiriSendiri = result ? result.count : 0; }
         checkComplete();
     });
-
     db.get('SELECT COUNT(*) as count FROM sanggahan WHERE tipe = "warga_lain"', (err, result) => {
-        if (err) {
-            console.error('Error getting warga lain sanggahan:', err);
-            stats.sanggahanWargaLain = 0;
-        } else {
-            stats.sanggahanWargaLain = result ? result.count : 0;
-        }
+        if (err) { console.error('Error getting warga lain sanggahan:', err); stats.sanggahanWargaLain = 0; } else { stats.sanggahanWargaLain = result ? result.count : 0; }
         checkComplete();
     });
 });
