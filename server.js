@@ -764,11 +764,11 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
                 }
                 
                 if (targetUserId) {
-                    // Update all pending bantuan for the target user to approved
+                    // Update all bantuan for the target user to approved (including rejected ones)
                     db.run(`
                         UPDATE bantuan_sosial 
-                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP 
-                        WHERE user_id = ? AND status = 'pending'
+                        SET status = 'approved', rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP 
+                        WHERE user_id = ? AND (status = 'pending' OR status = 'rejected')
                     `, [targetUserId], function(err) {
                         if (err) {
                             console.error('Error updating bantuan status:', err);
@@ -796,11 +796,11 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
                 }
                 
                 if (targetUserId) {
-                    // Update all pending bantuan for the target user to rejected
+                    // Update all bantuan for the target user to rejected (including approved ones)
                     db.run(`
                         UPDATE bantuan_sosial 
                         SET status = 'rejected', rejection_reason = 'Ditolak berdasarkan sanggahan', updated_at = CURRENT_TIMESTAMP 
-                        WHERE user_id = ? AND status = 'pending'
+                        WHERE user_id = ? AND (status = 'pending' OR status = 'approved')
                     `, [targetUserId], function(err) {
                         if (err) {
                             console.error('Error updating bantuan status:', err);
