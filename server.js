@@ -695,56 +695,121 @@ app.put('/api/admin/credentials', authenticateToken, (req, res) => {
         return res.status(400).json({ message: 'Isian tidak lengkap' });
     }
 
-    // Get current admin record
-    db.get('SELECT * FROM users WHERE id = ? AND role = "admin"', [adminId], (err, user) => {
-        if (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
-        if (!user) {
-            return res.status(404).json({ message: 'Admin tidak ditemukan' });
-        }
-        // Verify current password
-        const isValid = bcrypt.compareSync(currentPassword, user.password);
-        if (!isValid) {
-            return res.status(401).json({ message: 'Password saat ini salah' });
-        }
-
-        // Prepare updates
-        const updates = [];
-        const params = [];
-
-        if (newUsername && newUsername !== user.username) {
-            updates.push('username = ?');
-            params.push(newUsername);
-        }
-        if (newPassword) {
-            const hashed = bcrypt.hashSync(newPassword, 10);
-            updates.push('password = ?');
-            params.push(hashed);
-        }
-
-        if (updates.length === 0) {
-            return res.json({ message: 'Tidak ada perubahan' });
-        }
-
-        params.push(adminId);
-
-        // Try update; handle unique username constraint error
-        db.run(`UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'admin'`, params, function(updateErr) {
-            if (updateErr) {
-                if (updateErr && /UNIQUE constraint failed: users.username/i.test(updateErr.message)) {
-                    return res.status(400).json({ message: 'Username sudah digunakan' });
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                // Get current admin record
+                const { data: user, error: getUserError } = await supabaseAdmin
+                    .from('users')
+                    .select('*')
+                    .eq('id', adminId)
+                    .eq('role', 'admin')
+                    .maybeSingle();
+                
+                if (getUserError) {
+                    console.error('Error getting admin user:', getUserError);
+                    return res.status(500).json({ message: 'Server error' });
                 }
-                return res.status(500).json({ message: 'Gagal memperbarui kredensial' });
-            }
+                
+                if (!user) {
+                    return res.status(404).json({ message: 'Admin tidak ditemukan' });
+                }
+                
+                // Verify current password
+                const isValid = bcrypt.compareSync(currentPassword, user.password);
+                if (!isValid) {
+                    return res.status(401).json({ message: 'Password saat ini salah' });
+                }
 
-            if (this.changes === 0) {
+                // Prepare updates
+                const updateData = {};
+                
+                if (newUsername && newUsername !== user.username) {
+                    updateData.username = newUsername;
+                }
+                if (newPassword) {
+                    updateData.password = bcrypt.hashSync(newPassword, 10);
+                }
+
+                if (Object.keys(updateData).length === 0) {
+                    return res.json({ message: 'Tidak ada perubahan' });
+                }
+
+                // Update admin credentials
+                const { error: updateError } = await supabaseAdmin
+                    .from('users')
+                    .update(updateData)
+                    .eq('id', adminId)
+                    .eq('role', 'admin');
+                
+                if (updateError) {
+                    console.error('Error updating admin credentials:', updateError);
+                    if (updateError.code === '23505' || updateError.message.includes('unique')) {
+                        return res.status(400).json({ message: 'Username sudah digunakan' });
+                    }
+                    return res.status(500).json({ message: 'Gagal memperbarui kredensial' });
+                }
+                
+                console.log('Admin credentials updated successfully for user:', adminId);
+                return res.json({ message: 'Kredensial admin berhasil diperbarui. Silakan login ulang.' });
+            } catch (e) {
+                console.error('Update admin credentials error:', e);
+                return res.status(500).json({ message: 'Server error' });
+            }
+        })();
+    } else {
+        // SQLite version
+        // Get current admin record
+        db.get('SELECT * FROM users WHERE id = ? AND role = "admin"', [adminId], (err, user) => {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
+            }
+            if (!user) {
                 return res.status(404).json({ message: 'Admin tidak ditemukan' });
             }
+            // Verify current password
+            const isValid = bcrypt.compareSync(currentPassword, user.password);
+            if (!isValid) {
+                return res.status(401).json({ message: 'Password saat ini salah' });
+            }
 
-            return res.json({ message: 'Kredensial admin berhasil diperbarui. Silakan login ulang.' });
+            // Prepare updates
+            const updates = [];
+            const params = [];
+
+            if (newUsername && newUsername !== user.username) {
+                updates.push('username = ?');
+                params.push(newUsername);
+            }
+            if (newPassword) {
+                const hashed = bcrypt.hashSync(newPassword, 10);
+                updates.push('password = ?');
+                params.push(hashed);
+            }
+
+            if (updates.length === 0) {
+                return res.json({ message: 'Tidak ada perubahan' });
+            }
+
+            params.push(adminId);
+
+            // Try update; handle unique username constraint error
+            db.run(`UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'admin'`, params, function(updateErr) {
+                if (updateErr) {
+                    if (updateErr && /UNIQUE constraint failed: users.username/i.test(updateErr.message)) {
+                        return res.status(400).json({ message: 'Username sudah digunakan' });
+                    }
+                    return res.status(500).json({ message: 'Gagal memperbarui kredensial' });
+                }
+
+                if (this.changes === 0) {
+                    return res.status(404).json({ message: 'Admin tidak ditemukan' });
+                }
+
+                return res.json({ message: 'Kredensial admin berhasil diperbarui. Silakan login ulang.' });
+            });
         });
-    });
+    }
 });
 
 // Reset user password (admin)
