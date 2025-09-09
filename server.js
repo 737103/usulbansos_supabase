@@ -756,17 +756,59 @@ app.put('/api/admin/users/:id/reset-password', authenticateToken, (req, res) => 
     const userId = req.params.id;
     const defaultPassword = bcrypt.hashSync('123456', 10);
 
-    db.run('UPDATE users SET password = ? WHERE id = ? AND role = "warga"', [defaultPassword, userId], function(err) {
-        if (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                // Check if user exists and is a warga
+                const { data: existingUser, error: checkError } = await supabaseAdmin
+                    .from('users')
+                    .select('id, role')
+                    .eq('id', userId)
+                    .eq('role', 'warga')
+                    .maybeSingle();
+                
+                if (checkError) {
+                    console.error('Error checking user:', checkError);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                
+                if (!existingUser) {
+                    return res.status(404).json({ message: 'User tidak ditemukan' });
+                }
+                
+                // Update password
+                const { error: updateError } = await supabaseAdmin
+                    .from('users')
+                    .update({ password: defaultPassword })
+                    .eq('id', userId)
+                    .eq('role', 'warga');
+                
+                if (updateError) {
+                    console.error('Error updating password:', updateError);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                
+                console.log('Password reset successfully for user:', userId);
+                return res.json({ message: 'Password berhasil direset ke default' });
+            } catch (e) {
+                console.error('Reset password error:', e);
+                return res.status(500).json({ message: 'Server error' });
+            }
+        })();
+    } else {
+        // SQLite version
+        db.run('UPDATE users SET password = ? WHERE id = ? AND role = "warga"', [defaultPassword, userId], function(err) {
+            if (err) {
+                return res.status(500).json({ message: 'Server error' });
+            }
 
-        if (this.changes === 0) {
-            return res.status(404).json({ message: 'User tidak ditemukan' });
-        }
+            if (this.changes === 0) {
+                return res.status(404).json({ message: 'User tidak ditemukan' });
+            }
 
-        res.json({ message: 'Password berhasil direset ke default' });
-    });
+            res.json({ message: 'Password berhasil direset ke default' });
+        });
+    }
 });
 
 // Submit bantuan sosial
