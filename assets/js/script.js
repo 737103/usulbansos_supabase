@@ -2150,6 +2150,24 @@ function getCurrentPosition() {
     });
 }
 
+// Preview image function
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100px; max-height: 100px; border-radius: 4px; margin-top: 5px;">`;
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.innerHTML = '';
+    }
+}
+
 // Get current location for GPS (supports edit mode)
 function getCurrentLocation(mode = '') {
     const prefix = mode === 'edit' ? 'edit' : '';
@@ -2538,12 +2556,16 @@ async function handleEditBantuanSubmit(e) {
     formData.append('gps_longitude', document.getElementById('editGpsLongitude').value);
     
     // Add files if selected
-    const fileInputs = ['editFotoKK', 'editFotoRumahDepan', 'editFotoRumahDalam', 'editFotoSelfieKTP'];
-    fileInputs.forEach(inputId => {
-        const fileInput = document.getElementById(inputId);
+    const fileInputs = [
+        { id: 'editFotoKK', name: 'fotoKK' },
+        { id: 'editFotoRumahDepan', name: 'fotoRumahDepan' },
+        { id: 'editFotoRumahDalam', name: 'fotoRumahDalam' },
+        { id: 'editFotoSelfieKTP', name: 'fotoSelfieKTP' }
+    ];
+    fileInputs.forEach(input => {
+        const fileInput = document.getElementById(input.id);
         if (fileInput.files[0]) {
-            const fieldName = inputId.replace('edit', '').replace(/([A-Z])/g, (match, p1) => p1.toLowerCase());
-            formData.append(fieldName, fileInput.files[0]);
+            formData.append(input.name, fileInput.files[0]);
         }
     });
     

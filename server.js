@@ -1266,10 +1266,8 @@ app.put('/api/bantuan/:id', authenticateToken, upload.fields([
         return res.status(400).json({ message: 'Jenis bantuan dan alasan pengajuan wajib diisi' });
     }
 
-    // Validate GPS coordinates for foto lokasi rumah
-    if (!gps_latitude || !gps_longitude) {
-        return res.status(400).json({ message: 'GPS lokasi rumah wajib diaktifkan' });
-    }
+    // GPS coordinates are optional for edit (can keep existing ones)
+    // Only validate if new GPS coordinates are provided
 
     // Validate file sizes (500KB max) if files are uploaded
     const requiredFiles = ['fotoKK', 'fotoRumahDepan', 'fotoRumahDalam', 'fotoSelfieKTP'];
@@ -1319,7 +1317,14 @@ app.put('/api/bantuan/:id', authenticateToken, upload.fields([
                     try {
                         const uploadedPath = await uploadFileToSupabaseStorage(f, dest);
                         fileNames[fileField] = uploadedPath;
-                        updateData[`foto_${fileField.toLowerCase()}`] = uploadedPath;
+                        // Map field names correctly for Supabase
+                        const fieldMapping = {
+                            'fotoKK': 'foto_kk',
+                            'fotoRumahDepan': 'foto_rumah_depan',
+                            'fotoRumahDalam': 'foto_rumah_dalam',
+                            'fotoSelfieKTP': 'foto_selfie_ktp'
+                        };
+                        updateData[fieldMapping[fileField]] = uploadedPath;
                     } catch (uploadError) {
                         console.error(`Error uploading ${fileField}:`, uploadError);
                         return res.status(500).json({ message: `Gagal upload file ${fileField}` });
@@ -1344,7 +1349,7 @@ app.put('/api/bantuan/:id', authenticateToken, upload.fields([
             return res.json({ message: 'Data bantuan sosial berhasil diperbarui', bantuanId: data?.id || bantuanId });
         } catch (e) {
             console.error('Update error:', e);
-            return res.status(500).json({ message: 'Server error' });
+            return res.status(500).json({ message: 'Server error: ' + e.message });
         }
     } else {
         // SQLite version
@@ -1365,11 +1370,17 @@ app.put('/api/bantuan/:id', authenticateToken, upload.fields([
 
             // Handle file updates
             const fileNames = {};
+            const fieldMapping = {
+                'fotoKK': 'foto_kk',
+                'fotoRumahDepan': 'foto_rumah_depan',
+                'fotoRumahDalam': 'foto_rumah_dalam',
+                'fotoSelfieKTP': 'foto_selfie_ktp'
+            };
             for (const fileField of requiredFiles) {
                 if (req.files[fileField] && req.files[fileField].length > 0) {
                     const file = req.files[fileField][0];
                     fileNames[fileField] = file.filename;
-                    updateFields.push(`foto_${fileField.toLowerCase()} = ?`);
+                    updateFields.push(`${fieldMapping[fileField]} = ?`);
                     updateValues.push(file.filename);
                 }
             }
