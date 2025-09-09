@@ -268,8 +268,8 @@ body {
     position: absolute;
     inset: 0;
     display: flex;
-    width: calc(100% * 5);
-    animation: heroSlide 25s linear infinite;
+    width: calc(100% * 2);
+    animation: heroSlide 10s linear infinite;
 }
 
 .hero-photo-slide {
@@ -281,15 +281,9 @@ body {
 
 @keyframes heroSlide {
     0% { transform: translateX(0%); }
-    16% { transform: translateX(0%); }
-    20% { transform: translateX(-100%); }
-    36% { transform: translateX(-100%); }
-    40% { transform: translateX(-200%); }
-    56% { transform: translateX(-200%); }
-    60% { transform: translateX(-300%); }
-    76% { transform: translateX(-300%); }
-    80% { transform: translateX(-400%); }
-    100% { transform: translateX(-400%); }
+    45% { transform: translateX(0%); }
+    55% { transform: translateX(-100%); }
+    100% { transform: translateX(-100%); }
 }
 
 @media (max-width: 768px) {
