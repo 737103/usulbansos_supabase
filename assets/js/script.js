@@ -2324,7 +2324,7 @@ async function showRiwayatAjuan() {
         content.innerHTML = `
             <div class="table-container">
                 <h3>Riwayat Ajuan Bantuan Sosial</h3>
-                <table class="table">
+                <table class="table" style="width: 100%;">
                     <thead>
                         <tr>
                             <th>Jenis Bantuan</th>

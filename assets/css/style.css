@@ -2390,6 +2390,27 @@ button {
     color: white;
 }
 
+/* Ensure action buttons are visible */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 80px;
+}
+
+.action-buttons .action-btn {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.6rem;
+    min-width: 70px;
+}
+
+/* Table responsive for action column */
+.table th:last-child,
+.table td:last-child {
+    min-width: 100px;
+    text-align: center;
+}
+
 .modal-header * {
     color: white !important;
 }

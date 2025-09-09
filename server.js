@@ -1197,34 +1197,74 @@ app.delete('/api/admin/sanggahan/:id', authenticateToken, (req, res) => {
     
     console.log('Delete sanggahan request:', { id, userId: req.user.id });
     
-    // First, get the sanggahan details to check if it exists
-    db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
-        if (err) {
-            console.error('Error getting sanggahan:', err);
-            return res.status(500).json({ message: 'Server error' });
-        }
-        
-        if (!sanggahan) {
-            return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
-        }
-        
-        console.log('Sanggahan to delete:', sanggahan);
-        
-        // Delete the sanggahan
-        db.run('DELETE FROM sanggahan WHERE id = ?', [id], function(err) {
+    if (USE_SUPABASE) {
+        (async () => {
+            try {
+                // Check if sanggahan exists
+                const { data: existingSanggahan, error: checkError } = await supabaseAdmin
+                    .from('sanggahan')
+                    .select('id')
+                    .eq('id', id)
+                    .maybeSingle();
+                
+                if (checkError) {
+                    console.error('Error checking sanggahan:', checkError);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                
+                if (!existingSanggahan) {
+                    return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+                }
+                
+                // Delete the sanggahan
+                const { error: deleteError } = await supabaseAdmin
+                    .from('sanggahan')
+                    .delete()
+                    .eq('id', id);
+                
+                if (deleteError) {
+                    console.error('Error deleting sanggahan:', deleteError);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                
+                console.log('Sanggahan deleted successfully');
+                return res.json({ message: 'Sanggahan berhasil dihapus' });
+            } catch (e) {
+                console.error('Delete sanggahan error:', e);
+                return res.status(500).json({ message: 'Server error' });
+            }
+        })();
+    } else {
+        // SQLite version
+        // First, get the sanggahan details to check if it exists
+        db.get('SELECT * FROM sanggahan WHERE id = ?', [id], (err, sanggahan) => {
             if (err) {
-                console.error('Error deleting sanggahan:', err);
+                console.error('Error getting sanggahan:', err);
                 return res.status(500).json({ message: 'Server error' });
             }
             
-            if (this.changes === 0) {
+            if (!sanggahan) {
                 return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
             }
             
-            console.log('Sanggahan deleted successfully');
-            res.json({ message: 'Sanggahan berhasil dihapus' });
+            console.log('Sanggahan to delete:', sanggahan);
+            
+            // Delete the sanggahan
+            db.run('DELETE FROM sanggahan WHERE id = ?', [id], function(err) {
+                if (err) {
+                    console.error('Error deleting sanggahan:', err);
+                    return res.status(500).json({ message: 'Server error' });
+                }
+                
+                if (this.changes === 0) {
+                    return res.status(404).json({ message: 'Sanggahan tidak ditemukan' });
+                }
+                
+                console.log('Sanggahan deleted successfully');
+                res.json({ message: 'Sanggahan berhasil dihapus' });
+            });
         });
-    });
+    }
 });
 
 // Signed Upload URL endpoint (Supabase Storage)
