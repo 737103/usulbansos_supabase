@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bansos-app-v1';
+const CACHE_NAME = 'bansos-app-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -11,6 +11,7 @@ const urlsToCache = [
 
 // Install event
 self.addEventListener('install', function(event) {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(function(cache) {
@@ -24,6 +25,10 @@ self.addEventListener('install', function(event) {
 self.addEventListener('fetch', function(event) {
   // Skip API requests - let them go to network directly
   if (event.request.url.includes('/api/')) {
+    return;
+  }
+  // Bypass caching for uploads to avoid stale images or 404 caching
+  if (event.request.url.includes('/uploads/')) {
     return;
   }
 
@@ -69,6 +74,6 @@ self.addEventListener('activate', function(event) {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
