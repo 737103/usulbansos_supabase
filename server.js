@@ -976,10 +976,10 @@ app.get('/api/sanggahan', authenticateToken, (req, res) => {
             if (error) return res.status(500).json({ message: 'Server error' });
             const mapped = (data || []).map(s => ({
                 ...s,
-                pelapor_nama: s.pelapor?.[0]?.nama || null,
-                pelapor_nik: s.pelapor?.[0]?.nik || null,
-                target_nama: s.target?.[0]?.nama || null,
-                target_nik: s.target?.[0]?.nik || null
+                pelapor_nama: s.pelapor?.nama || null,
+                pelapor_nik: s.pelapor?.nik || null,
+                target_nama: s.target?.nama || null,
+                target_nik: s.target?.nik || null
             }));
             return res.json(mapped);
         })();
@@ -1017,10 +1017,10 @@ app.get('/api/admin/sanggahan', authenticateToken, (req, res) => {
             if (error) return res.status(500).json({ message: 'Server error' });
             const mapped = (data || []).map(s => ({
                 ...s,
-                pelapor_nama: s.pelapor?.[0]?.nama || null,
-                pelapor_nik: s.pelapor?.[0]?.nik || null,
-                target_nama: s.target?.[0]?.nama || null,
-                target_nik: s.target?.[0]?.nik || null
+                pelapor_nama: s.pelapor?.nama || null,
+                pelapor_nik: s.pelapor?.nik || null,
+                target_nama: s.target?.nama || null,
+                target_nik: s.target?.nik || null
             }));
             return res.json(mapped);
         })();
@@ -1345,7 +1345,7 @@ app.get('/api/admin/bantuan', authenticateToken, (req, res) => {
                 .select('*, user:users!bantuan_sosial_user_id_fkey(nama, nik)')
                 .order('created_at', { ascending: false });
             if (error) return res.status(500).json({ message: 'Server error' });
-            const mapped = (data || []).map(b => ({ ...b, nama: b.user?.[0]?.nama || null, nik: b.user?.[0]?.nik || null }));
+            const mapped = (data || []).map(b => ({ ...b, nama: b.user?.nama || null, nik: b.user?.nik || null }));
             return res.json(mapped);
         })();
     } else {
