@@ -1368,6 +1368,7 @@ section {
     min-width: 120px;
     max-width: 150px;
     text-align: center;
+    vertical-align: middle;
 }
 
 /* Special styling for Alasan Pengajuan column */
@@ -2329,8 +2330,11 @@ button {
 /* Action Buttons Styling */
 .action-buttons {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row; /* sejajarkan tombol secara horizontal */
+    flex-wrap: wrap;     /* agar tetap termuat di dalam sel tabel */
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
     min-width: 120px;
 }
 
@@ -2403,8 +2407,11 @@ button {
 /* Ensure action buttons are visible */
 .action-buttons {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
     min-width: 80px;
 }
 
@@ -2412,12 +2419,14 @@ button {
     font-size: 0.75rem;
     padding: 0.4rem 0.6rem;
     min-width: 70px;
+    max-width: 110px;   /* batasi lebar tombol agar muat */
 }
 
 /* Table responsive for action column */
 .table th:last-child,
 .table td:last-child {
-    min-width: 100px;
+    min-width: 120px;
+    max-width: 180px;  /* batasi kolom aksi agar layout stabil */
     text-align: center;
 }
 
