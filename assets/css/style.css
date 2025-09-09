@@ -2067,8 +2067,8 @@ section {
     position: absolute;
     inset: 0;
     display: flex;
-    width: calc(100% * 6);
-    animation: bannerSlide 24s linear infinite;
+    width: 100%;
+    animation: none;
 }
 
 .login-banner-slide {
@@ -2080,16 +2080,9 @@ section {
 
 @keyframes bannerSlide {
     0% { transform: translateX(0%); }
-    15% { transform: translateX(0%); }
-    20% { transform: translateX(-100%); }
-    35% { transform: translateX(-100%); }
-    40% { transform: translateX(-200%); }
-    55% { transform: translateX(-200%); }
-    60% { transform: translateX(-300%); }
-    75% { transform: translateX(-300%); }
-    80% { transform: translateX(-400%); }
-    95% { transform: translateX(-400%); }
-    100% { transform: translateX(-500%); }
+    45% { transform: translateX(0%); }
+    55% { transform: translateX(-100%); }
+    100% { transform: translateX(-100%); }
 }
 
 @media (max-width: 480px) {
