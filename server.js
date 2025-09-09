@@ -1246,6 +1246,157 @@ app.post('/api/storage/signed-url', authenticateToken, async (req, res) => {
     }
 });
 
+// Update bantuan sosial (edit)
+app.put('/api/bantuan/:id', authenticateToken, upload.fields([
+    { name: 'fotoKK', maxCount: 1 },
+    { name: 'fotoRumahDepan', maxCount: 1 },
+    { name: 'fotoRumahDalam', maxCount: 1 },
+    { name: 'fotoSelfieKTP', maxCount: 1 }
+]), async (req, res) => {
+    const bantuanId = req.params.id;
+    const userId = req.user.id;
+    const { 
+        jenis_bantuan, 
+        alasan_pengajuan, 
+        gps_latitude, 
+        gps_longitude 
+    } = req.body;
+
+    if (!jenis_bantuan || !alasan_pengajuan) {
+        return res.status(400).json({ message: 'Jenis bantuan dan alasan pengajuan wajib diisi' });
+    }
+
+    // Validate GPS coordinates for foto lokasi rumah
+    if (!gps_latitude || !gps_longitude) {
+        return res.status(400).json({ message: 'GPS lokasi rumah wajib diaktifkan' });
+    }
+
+    // Validate file sizes (500KB max) if files are uploaded
+    const requiredFiles = ['fotoKK', 'fotoRumahDepan', 'fotoRumahDalam', 'fotoSelfieKTP'];
+    for (const fileField of requiredFiles) {
+        if (req.files[fileField] && req.files[fileField].length > 0) {
+            const file = req.files[fileField][0];
+            if (file.size > 500 * 1024) {
+                return res.status(400).json({ message: `Ukuran file ${fileField} maksimal 500 KB` });
+            }
+        }
+    }
+
+    if (USE_SUPABASE) {
+        try {
+            // Check if bantuan belongs to user
+            const { data: existingBantuan, error: checkError } = await supabaseAdmin
+                .from('bantuan_sosial')
+                .select('id, user_id')
+                .eq('id', bantuanId)
+                .eq('user_id', userId)
+                .maybeSingle();
+            
+            if (checkError) {
+                console.error('Error checking bantuan ownership:', checkError);
+                return res.status(500).json({ message: 'Server error' });
+            }
+            
+            if (!existingBantuan) {
+                return res.status(404).json({ message: 'Bantuan tidak ditemukan atau bukan milik Anda' });
+            }
+
+            // Prepare update data
+            const updateData = {
+                jenis_bantuan,
+                alasan_pengajuan,
+                gps_latitude: gps_latitude || null,
+                gps_longitude: gps_longitude || null,
+                updated_at: new Date().toISOString()
+            };
+
+            // Upload new files if provided
+            const fileNames = {};
+            for (const fileField of requiredFiles) {
+                if (req.files[fileField] && req.files[fileField].length > 0) {
+                    const f = req.files[fileField][0];
+                    const dest = `users/${userId}/${Date.now()}-${f.originalname}`;
+                    try {
+                        const uploadedPath = await uploadFileToSupabaseStorage(f, dest);
+                        fileNames[fileField] = uploadedPath;
+                        updateData[`foto_${fileField.toLowerCase()}`] = uploadedPath;
+                    } catch (uploadError) {
+                        console.error(`Error uploading ${fileField}:`, uploadError);
+                        return res.status(500).json({ message: `Gagal upload file ${fileField}` });
+                    }
+                }
+            }
+
+            // Update bantuan
+            const { data, error } = await supabaseAdmin
+                .from('bantuan_sosial')
+                .update(updateData)
+                .eq('id', bantuanId)
+                .eq('user_id', userId)
+                .select('id')
+                .maybeSingle();
+
+            if (error) {
+                console.error('Supabase update error:', error);
+                return res.status(500).json({ message: 'Server error' });
+            }
+
+            return res.json({ message: 'Data bantuan sosial berhasil diperbarui', bantuanId: data?.id || bantuanId });
+        } catch (e) {
+            console.error('Update error:', e);
+            return res.status(500).json({ message: 'Server error' });
+        }
+    } else {
+        // SQLite version
+        // Check if bantuan belongs to user
+        db.get('SELECT id FROM bantuan_sosial WHERE id = ? AND user_id = ?', [bantuanId, userId], (err, existingBantuan) => {
+            if (err) {
+                console.error('Error checking bantuan ownership:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+            
+            if (!existingBantuan) {
+                return res.status(404).json({ message: 'Bantuan tidak ditemukan atau bukan milik Anda' });
+            }
+
+            // Prepare update data
+            const updateFields = ['jenis_bantuan = ?', 'alasan_pengajuan = ?', 'gps_latitude = ?', 'gps_longitude = ?', 'updated_at = CURRENT_TIMESTAMP'];
+            const updateValues = [jenis_bantuan, alasan_pengajuan, gps_latitude || null, gps_longitude || null];
+
+            // Handle file updates
+            const fileNames = {};
+            for (const fileField of requiredFiles) {
+                if (req.files[fileField] && req.files[fileField].length > 0) {
+                    const file = req.files[fileField][0];
+                    fileNames[fileField] = file.filename;
+                    updateFields.push(`foto_${fileField.toLowerCase()} = ?`);
+                    updateValues.push(file.filename);
+                }
+            }
+
+            updateValues.push(bantuanId);
+
+            // Update bantuan
+            db.run(
+                `UPDATE bantuan_sosial SET ${updateFields.join(', ')} WHERE id = ? AND user_id = ?`,
+                [...updateValues, userId],
+                function(err) {
+                    if (err) {
+                        console.error('Database update error:', err);
+                        return res.status(500).json({ message: 'Server error' });
+                    }
+                    
+                    if (this.changes === 0) {
+                        return res.status(404).json({ message: 'Bantuan tidak ditemukan atau bukan milik Anda' });
+                    }
+                    
+                    res.json({ message: 'Data bantuan sosial berhasil diperbarui', bantuanId: bantuanId });
+                }
+            );
+        });
+    }
+});
+
 // Submit bantuan via JSON (tanpa multipart, file sudah diupload via signed URL)
 app.post('/api/bantuan/json', authenticateToken, async (req, res) => {
     if (!USE_SUPABASE) return res.status(400).json({ message: 'Endpoint hanya untuk mode Supabase' });

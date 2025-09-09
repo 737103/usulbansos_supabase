@@ -2150,6 +2150,55 @@ function getCurrentPosition() {
     });
 }
 
+// Get current location for GPS (supports edit mode)
+function getCurrentLocation(mode = '') {
+    const prefix = mode === 'edit' ? 'edit' : '';
+    const locationInfo = document.getElementById(`${prefix}LocationInfo`);
+    const latitudeInput = document.getElementById(`${prefix}GpsLatitude`);
+    const longitudeInput = document.getElementById(`${prefix}GpsLongitude`);
+    
+    if (!locationInfo || !latitudeInput || !longitudeInput) {
+        showMessage('Elemen GPS tidak ditemukan', 'error');
+        return;
+    }
+    
+    locationInfo.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Mengambil lokasi GPS...</p>';
+    
+    getCurrentPosition()
+        .then(position => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            
+            latitudeInput.value = latitude;
+            longitudeInput.value = longitude;
+            
+            locationInfo.innerHTML = `
+                <p><i class="fas fa-check-circle text-success"></i> Lokasi berhasil diambil!</p>
+                <p><strong>Koordinat:</strong> ${latitude}, ${longitude}</p>
+                <a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank" class="btn-link">
+                    <i class="fas fa-external-link-alt"></i> Lihat di Google Maps
+                </a>
+            `;
+            
+            showMessage('Lokasi GPS berhasil diambil', 'success');
+        })
+        .catch(error => {
+            console.error('Error getting location:', error);
+            let errorMessage = 'Gagal mengambil lokasi GPS';
+            
+            if (error.code === 1) {
+                errorMessage = 'Akses lokasi ditolak. Silakan izinkan akses lokasi di browser Anda.';
+            } else if (error.code === 2) {
+                errorMessage = 'Lokasi tidak dapat ditentukan. Pastikan GPS aktif.';
+            } else if (error.code === 3) {
+                errorMessage = 'Timeout mengambil lokasi. Silakan coba lagi.';
+            }
+            
+            locationInfo.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${errorMessage}</p>`;
+            showMessage(errorMessage, 'error');
+        });
+}
+
 // Add File Validation Handlers
 function addFileValidationHandlers() {
     const fileInputs = ['fotoKK', 'fotoRumahDepan', 'fotoRumahDalam', 'fotoSelfieKTP'];
@@ -2266,6 +2315,7 @@ async function showRiwayatAjuan() {
                             <th>Tanggal Ajuan</th>
                             <th>Alasan Penolakan</th>
                             <th>Dokumen</th>
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2295,6 +2345,13 @@ async function showRiwayatAjuan() {
                                         ${bantuan.foto_selfie_ktp ? `<a href="/uploads/${bantuan.foto_selfie_ktp}" target="_blank" class="doc-btn doc-selfie"><i class="fas fa-user"></i> Selfie</a>` : ''}
                                         ${bantuan.gps_latitude && bantuan.gps_longitude ? `<a href="https://www.google.com/maps?q=${bantuan.gps_latitude},${bantuan.gps_longitude}" target="_blank" class="doc-btn doc-gps"><i class="fas fa-map-marker-alt"></i> GPS</a>` : ''}
                                         ${!bantuan.foto_kk && !bantuan.foto_rumah_depan && !bantuan.foto_rumah_dalam && !bantuan.foto_selfie_ktp && !bantuan.gps_latitude ? '<span class="no-docs">Tidak ada</span>' : ''}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="action-btn action-edit" onclick="showEditBantuanForm(${bantuan.id})" title="Edit data bantuan">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -2341,6 +2398,178 @@ function getStatusClass(status) {
         'rejected': 'rejected'
     };
     return classes[status] || 'pending';
+}
+
+// Show Edit Bantuan Form
+async function showEditBantuanForm(bantuanId) {
+    const content = document.getElementById('warga-content');
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/bantuan`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Gagal mengambil data bantuan');
+        }
+
+        const bantuanList = await response.json();
+        const bantuan = bantuanList.find(b => b.id == bantuanId);
+        
+        if (!bantuan) {
+            showMessage('Data bantuan tidak ditemukan', 'error');
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="form-container">
+                <h3>Edit Data Bantuan Sosial</h3>
+                <form id="editBantuanForm" enctype="multipart/form-data">
+                    <input type="hidden" id="bantuanId" value="${bantuan.id}">
+                    
+                    <div class="form-group">
+                        <label for="editJenisBantuan">Jenis Bantuan *</label>
+                        <select id="editJenisBantuan" name="jenis_bantuan" required>
+                            <option value="">Pilih Jenis Bantuan</option>
+                            <option value="PKH" ${bantuan.jenis_bantuan === 'PKH' ? 'selected' : ''}>PKH (Program Keluarga Harapan)</option>
+                            <option value="BNPT" ${bantuan.jenis_bantuan === 'BNPT' ? 'selected' : ''}>BNPT (Bantuan Non Tunai Pangan)</option>
+                            <option value="pangan" ${bantuan.jenis_bantuan === 'pangan' ? 'selected' : ''}>Bantuan Pangan</option>
+                            <option value="sembako" ${bantuan.jenis_bantuan === 'sembako' ? 'selected' : ''}>Bantuan Sembako</option>
+                            <option value="tunai" ${bantuan.jenis_bantuan === 'tunai' ? 'selected' : ''}>Bantuan Tunai</option>
+                            <option value="lainnya" ${bantuan.jenis_bantuan === 'lainnya' ? 'selected' : ''}>Lainnya</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editAlasanPengajuan">Alasan Pengajuan *</label>
+                        <textarea id="editAlasanPengajuan" name="alasan_pengajuan" rows="4" required placeholder="Jelaskan alasan mengapa Anda membutuhkan bantuan sosial ini...">${bantuan.alasan_pengajuan || ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dokumen Pendukung</label>
+                        <div class="file-upload-grid">
+                            <div class="file-upload-item">
+                                <label for="editFotoKK">Foto Kartu Keluarga</label>
+                                <input type="file" id="editFotoKK" name="fotoKK" accept="image/*" onchange="previewImage(this, 'editPreviewKK')">
+                                <div id="editPreviewKK" class="image-preview">
+                                    ${bantuan.foto_kk ? `<img src="/uploads/${bantuan.foto_kk}" alt="Foto KK" style="max-width: 100px; max-height: 100px;">` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="file-upload-item">
+                                <label for="editFotoRumahDepan">Foto Rumah Depan</label>
+                                <input type="file" id="editFotoRumahDepan" name="fotoRumahDepan" accept="image/*" onchange="previewImage(this, 'editPreviewRumahDepan')">
+                                <div id="editPreviewRumahDepan" class="image-preview">
+                                    ${bantuan.foto_rumah_depan ? `<img src="/uploads/${bantuan.foto_rumah_depan}" alt="Foto Rumah Depan" style="max-width: 100px; max-height: 100px;">` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="file-upload-item">
+                                <label for="editFotoRumahDalam">Foto Rumah Dalam</label>
+                                <input type="file" id="editFotoRumahDalam" name="fotoRumahDalam" accept="image/*" onchange="previewImage(this, 'editPreviewRumahDalam')">
+                                <div id="editPreviewRumahDalam" class="image-preview">
+                                    ${bantuan.foto_rumah_dalam ? `<img src="/uploads/${bantuan.foto_rumah_dalam}" alt="Foto Rumah Dalam" style="max-width: 100px; max-height: 100px;">` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="file-upload-item">
+                                <label for="editFotoSelfieKTP">Foto Selfie dengan KTP</label>
+                                <input type="file" id="editFotoSelfieKTP" name="fotoSelfieKTP" accept="image/*" onchange="previewImage(this, 'editPreviewSelfieKTP')">
+                                <div id="editPreviewSelfieKTP" class="image-preview">
+                                    ${bantuan.foto_selfie_ktp ? `<img src="/uploads/${bantuan.foto_selfie_ktp}" alt="Foto Selfie KTP" style="max-width: 100px; max-height: 100px;">` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lokasi GPS Rumah</label>
+                        <div class="gps-section">
+                            <button type="button" id="editGetLocationBtn" onclick="getCurrentLocation('edit')" class="btn-secondary">
+                                <i class="fas fa-map-marker-alt"></i> Ambil Lokasi GPS
+                            </button>
+                            <div id="editLocationInfo" class="location-info">
+                                ${bantuan.gps_latitude && bantuan.gps_longitude ? 
+                                    `<p>Lokasi: ${bantuan.gps_latitude}, ${bantuan.gps_longitude}</p>
+                                     <a href="https://www.google.com/maps?q=${bantuan.gps_latitude},${bantuan.gps_longitude}" target="_blank" class="btn-link">Lihat di Google Maps</a>` : 
+                                    '<p>Belum ada lokasi GPS</p>'
+                                }
+                            </div>
+                            <input type="hidden" id="editGpsLatitude" name="gps_latitude" value="${bantuan.gps_latitude || ''}">
+                            <input type="hidden" id="editGpsLongitude" name="gps_longitude" value="${bantuan.gps_longitude || ''}">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" onclick="showRiwayatAjuan()" class="btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Add form submit event listener
+        document.getElementById('editBantuanForm').addEventListener('submit', handleEditBantuanSubmit);
+        
+    } catch (error) {
+        console.error('Error loading edit form:', error);
+        showMessage('Gagal memuat form edit', 'error');
+    }
+}
+
+// Handle Edit Bantuan Form Submit
+async function handleEditBantuanSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const bantuanId = document.getElementById('bantuanId').value;
+    
+    // Add form fields
+    formData.append('jenis_bantuan', document.getElementById('editJenisBantuan').value);
+    formData.append('alasan_pengajuan', document.getElementById('editAlasanPengajuan').value);
+    formData.append('gps_latitude', document.getElementById('editGpsLatitude').value);
+    formData.append('gps_longitude', document.getElementById('editGpsLongitude').value);
+    
+    // Add files if selected
+    const fileInputs = ['editFotoKK', 'editFotoRumahDepan', 'editFotoRumahDalam', 'editFotoSelfieKTP'];
+    fileInputs.forEach(inputId => {
+        const fileInput = document.getElementById(inputId);
+        if (fileInput.files[0]) {
+            const fieldName = inputId.replace('edit', '').replace(/([A-Z])/g, (match, p1) => p1.toLowerCase());
+            formData.append(fieldName, fileInput.files[0]);
+        }
+    });
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/bantuan/${bantuanId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Gagal memperbarui data bantuan');
+        }
+        
+        showMessage('Data bantuan sosial berhasil diperbarui', 'success');
+        showRiwayatAjuan(); // Refresh the list
+        
+    } catch (error) {
+        console.error('Error updating bantuan:', error);
+        showMessage(`Gagal memperbarui data: ${error.message}`, 'error');
+    }
 }
 
 // Show Riwayat Sanggahan

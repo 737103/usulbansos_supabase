@@ -2380,6 +2380,16 @@ button {
     color: #333;
 }
 
+.action-edit {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.action-edit:hover {
+    background: linear-gradient(135deg, #0056b3, #007bff);
+    color: white;
+}
+
 .modal-header * {
     color: white !important;
 }
