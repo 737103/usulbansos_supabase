@@ -70,8 +70,23 @@ app.use(express.static('.'));
 // Proxy Supabase Storage paths to public URL when using Supabase
 app.get('/uploads/*', async (req, res, next) => {
     try {
-        if (!USE_SUPABASE) return next();
         const relPath = req.params[0];
+        // Prefer local file if it exists (so hero/banner/login images work immediately)
+        if (relPath) {
+            // Always keep these served locally (even if not found, fall through to static -> 404),
+            // to prevent accidental proxying to Supabase which returns 400
+            const allowLocalRegex = /^(public\/|hero|banner|landing|login)/i;
+            if (allowLocalRegex.test(relPath)) {
+                return next();
+            }
+            const localCandidate = path.join('uploads', relPath);
+            try {
+                if (fs.existsSync(localCandidate)) {
+                    return next();
+                }
+            } catch (_) {}
+        }
+        // Otherwise, when Supabase mode is ON, proxy to Supabase public URL
         if (!relPath) return res.status(404).end();
         if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
         const { data } = supabaseAdmin.storage.from(SUPABASE_BUCKET).getPublicUrl(relPath);
@@ -83,6 +98,9 @@ app.get('/uploads/*', async (req, res, next) => {
         return next();
     }
 });
+
+// Handle browsers requesting /favicon.ico even when we use inline SVG icon
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
 app.use('/uploads', express.static('uploads'));
 
 // Create uploads directory if it doesn't exist
