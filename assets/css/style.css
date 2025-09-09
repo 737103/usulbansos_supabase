@@ -1381,6 +1381,16 @@ section {
     padding: 0.8rem 0.6rem;
 }
 
+/* Khusus tabel riwayat ajuan warga: pastikan kolom alasan membungkus teks rapi */
+.riwayat-ajuan-table th:nth-child(2),
+.riwayat-ajuan-table td:nth-child(2) {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere;
+    max-width: 420px; /* beri ruang lebih agar mudah dibaca */
+    line-height: 1.5;
+}
+
 /* Special styling for Dokumen column */
 .table th:nth-child(5), .table td:nth-child(5) { /* Dokumen */
     min-width: 120px;
