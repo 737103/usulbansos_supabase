@@ -265,6 +265,7 @@ body {
     z-index: 1;
     /* Ensure the banner is visible and has proper dimensions */
     min-height: 180px;
+    aspect-ratio: 16 / 9; /* jaga proporsi agar tidak berubah setelah logout */
     /* Force hardware acceleration for smooth animation */
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
@@ -280,7 +281,7 @@ body {
     object-fit: cover;
     object-position: center;
     border-radius: 16px;
-    transform: scale(1.05);
+    transform: none; /* hindari zoom yang membuat gambar tampak berubah */
     transition: transform 0.3s ease;
     /* Ensure proper display */
     display: block;
@@ -305,10 +306,7 @@ body {
 }
 
 /* Additional CSS for static banner */
-.hero-photo-banner:hover .hero-photo-image {
-    transform: scale(1.08);
-    transition: transform 0.3s ease;
-}
+.hero-photo-banner:hover .hero-photo-image { transform: none; }
 
 /* Removed old slide CSS - now using img tag */
 
@@ -1352,6 +1350,19 @@ section {
     overscroll-behavior-x: contain;
     touch-action: pan-x; /* memudahkan geser secara horizontal */
     margin: 1rem 0;
+}
+
+/* Non-scroll layout khusus riwayat ajuan: teks dan tombol menyesuaikan konten */
+.table-container.riwayat-no-scroll {
+    overflow-x: visible !important;
+}
+.table-container.riwayat-no-scroll .table {
+    min-width: 100% !important;
+    table-layout: auto !important;
+}
+.table-container.riwayat-no-scroll .riwayat-ajuan-table th,
+.table-container.riwayat-no-scroll .riwayat-ajuan-table td {
+    white-space: normal !important;
 }
 
 /* Perbaikan area scroll agar tidak macet: tambahkan padding-bottom kecil
