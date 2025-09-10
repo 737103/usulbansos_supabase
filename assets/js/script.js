@@ -298,7 +298,7 @@ async function validateNIK(e) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'nik-validation-message';
             
-            if (response.ok) {
+            if (response.ok && (data && data.code === 'NIK_AVAILABLE')) {
                 messageDiv.style.color = '#28a745';
                 messageDiv.innerHTML = '<i class="fas fa-check"></i> NIK tersedia untuk pendaftaran';
                 e.target.style.borderColor = '#28a745';

@@ -480,16 +480,18 @@ app.post('/api/warga/check-nik', async (req, res) => {
         });
     }
 
-    if (USE_SUPABASE) {
+    // 1) Cek di Supabase jika terkonfigurasi
+    if (supabaseAdmin) {
         try {
-            if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
             const { data: user, error } = await supabaseAdmin
                 .from('users')
                 .select('id, verified')
                 .eq('nik', nik)
                 .limit(1)
                 .maybeSingle();
-            if (error) return res.status(500).json({ message: 'Server error' });
+            if (error) {
+                console.error('[check-nik][Supabase] error:', error);
+            }
 
             if (user) {
                 if (user.verified === 1 || user.verified === true) {
@@ -505,13 +507,13 @@ app.post('/api/warga/check-nik', async (req, res) => {
                 }
             }
 
-            return res.json({ message: 'NIK tersedia untuk pendaftaran', code: 'NIK_AVAILABLE' });
-        } catch (_) {
-            return res.status(500).json({ message: 'Server error' });
+            // Jangan return di sini; lanjut cek SQLite juga untuk memastikan konsistensi
+        } catch (e) {
+            console.error('[check-nik] exception:', e);
         }
     }
 
-    // SQLite fallback
+    // 2) Cek di SQLite (selalu dicek karena mungkin data lokal)
     db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
         if (err) {
             return res.status(500).json({ message: 'Server error' });
@@ -531,7 +533,7 @@ app.post('/api/warga/check-nik', async (req, res) => {
             }
         }
 
-        // NIK is available
+        // Jika tidak ditemukan di kedua sumber, NIK tersedia
         res.json({ 
             message: 'NIK tersedia untuk pendaftaran',
             code: 'NIK_AVAILABLE'
