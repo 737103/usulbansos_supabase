@@ -274,10 +274,11 @@ body {
     position: absolute;
     inset: 0;
     display: flex;
-    width: calc(100% * 2);
-    animation: heroSlide 6s ease-in-out infinite;
-    will-change: transform;
-    animation-fill-mode: both;
+    width: 100%;
+    /* Remove animation for static display */
+    /* animation: heroSlide 6s ease-in-out infinite; */
+    /* will-change: transform; */
+    /* animation-fill-mode: both; */
     /* Ensure proper positioning and visibility */
     left: 0;
     top: 0;
@@ -289,7 +290,7 @@ body {
 }
 
 .hero-photo-slide {
-    width: 50%;
+    width: 100%;
     height: 100%;
     background-size: cover;
     background-position: center;
@@ -305,22 +306,12 @@ body {
     -webkit-transform: scale(1.05) translateZ(0);
 }
 
-@keyframes heroSlide {
-    0% { transform: translateX(0%) translateZ(0); }
-    30% { transform: translateX(0%) translateZ(0); }
-    35% { transform: translateX(-100%) translateZ(0); }
-    80% { transform: translateX(-100%) translateZ(0); }
-    85% { transform: translateX(0%) translateZ(0); }
-    100% { transform: translateX(0%) translateZ(0); }
-}
+/* Keyframes removed - using static banner */
 
 @media (max-width: 768px) {
     .hero-photo-banner { 
         height: 150px; 
         min-height: 150px;
-    }
-    .hero-photo-track {
-        animation: heroSlide 4s ease-in-out infinite;
     }
 }
 
@@ -329,30 +320,16 @@ body {
         height: 120px; 
         min-height: 120px;
     }
-    .hero-photo-track {
-        animation: heroSlide 3s ease-in-out infinite;
-    }
 }
 
-/* Additional CSS to ensure animation works */
-.hero-photo-banner:hover .hero-photo-track {
-    animation-play-state: paused;
+/* Additional CSS for static banner */
+.hero-photo-banner:hover .hero-photo-slide:first-child {
+    transform: scale(1.08) translateZ(0);
+    -webkit-transform: scale(1.08) translateZ(0);
+    transition: transform 0.3s ease;
 }
 
-.hero-photo-banner:not(:hover) .hero-photo-track {
-    animation-play-state: running;
-}
-
-/* Force animation to start immediately */
-.hero-photo-track {
-    animation-delay: 0s;
-    animation-iteration-count: infinite;
-    animation-direction: normal;
-    animation-timing-function: ease-in-out;
-    /* Ensure animation starts immediately */
-    animation-fill-mode: both;
-    animation-play-state: running;
-}
+/* Static banner styling - no additional rules needed */
 
 /* Ensure slides are properly positioned */
 .hero-photo-slide:first-child {
@@ -362,19 +339,18 @@ body {
     background-repeat: no-repeat;
     /* Ensure proper display */
     display: block;
-    width: 50%;
+    width: 100%;
     height: 100%;
     /* Force hardware acceleration */
     transform: scale(1.05) translateZ(0);
     -webkit-transform: scale(1.05) translateZ(0);
     /* Ensure proper positioning */
     position: relative;
-    float: left;
     /* Ensure proper sizing */
-    min-width: 50%;
-    max-width: 50%;
+    min-width: 100%;
+    max-width: 100%;
     /* Ensure proper flex behavior */
-    flex: 0 0 50%;
+    flex: 0 0 100%;
     /* Ensure proper overflow handling */
     overflow: hidden;
     /* Ensure proper z-index */
@@ -387,12 +363,7 @@ body {
     background-clip: border-box;
     /* Ensure proper background blend mode */
     background-blend-mode: normal;
-    /* Ensure proper background composite */
-    background-composite: source-over;
-    /* Ensure proper background filter */
-    background-filter: none;
-    /* Ensure proper background mask */
-    background-mask: none;
+    /* Background properties optimized */
     /* Ensure proper background repeat */
     background-repeat: no-repeat;
     /* Ensure proper background size */
@@ -402,49 +373,8 @@ body {
 }
 
 .hero-photo-slide:last-child {
-    background-image: url('uploads/hero2.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    /* Ensure proper display */
-    display: block;
-    width: 50%;
-    height: 100%;
-    /* Force hardware acceleration */
-    transform: scale(1.05) translateZ(0);
-    -webkit-transform: scale(1.05) translateZ(0);
-    /* Ensure proper positioning */
-    position: relative;
-    float: left;
-    /* Ensure proper sizing */
-    min-width: 50%;
-    max-width: 50%;
-    /* Ensure proper flex behavior */
-    flex: 0 0 50%;
-    /* Ensure proper overflow handling */
-    overflow: hidden;
-    /* Ensure proper z-index */
-    z-index: 1;
-    /* Ensure proper background attachment */
-    background-attachment: scroll;
-    /* Ensure proper background origin */
-    background-origin: border-box;
-    /* Ensure proper background clip */
-    background-clip: border-box;
-    /* Ensure proper background blend mode */
-    background-blend-mode: normal;
-    /* Ensure proper background composite */
-    background-composite: source-over;
-    /* Ensure proper background filter */
-    background-filter: none;
-    /* Ensure proper background mask */
-    background-mask: none;
-    /* Ensure proper background repeat */
-    background-repeat: no-repeat;
-    /* Ensure proper background size */
-    background-size: cover;
-    /* Ensure proper background position */
-    background-position: center;
+    /* Hide the second slide */
+    display: none;
 }
 
 /* Section Styles */
