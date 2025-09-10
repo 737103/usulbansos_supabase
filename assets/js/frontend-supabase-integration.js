@@ -138,6 +138,7 @@
 		if (registerForm) {
 			registerForm.addEventListener('submit', async function(e){
 				e.preventDefault();
+				e.stopImmediatePropagation(); // cegah handler lain (script.js) mengeksekusi ganda
 				const payload = getJson(registerForm);
 				if (payload.password !== payload.confirmPassword) {
 					return notify('Konfirmasi password tidak cocok');
