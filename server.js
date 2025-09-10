@@ -1216,22 +1216,12 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
                 if (targetUserId) {
                     await supabaseAdmin
                         .from('bantuan_sosial')
-                        .update({ status: 'approved', rejection_reason: null, updated_at: new Date().toISOString() })
-                        .eq('user_id', targetUserId)
-                        .in('status', ['pending', 'rejected']);
-                }
-            }
-            if (status === 'rejected') {
-                if (sanggahan.tipe === 'diri_sendiri') targetUserId = sanggahan.pelapor_user_id;
-                else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) targetUserId = sanggahan.target_user_id;
-                if (targetUserId) {
-                    await supabaseAdmin
-                        .from('bantuan_sosial')
                         .update({ status: 'rejected', rejection_reason: 'Ditolak berdasarkan sanggahan', updated_at: new Date().toISOString() })
                         .eq('user_id', targetUserId)
                         .in('status', ['pending', 'approved']);
                 }
             }
+            // Jika sanggahan ditolak oleh admin, jangan ubah status bantuan sosial apapun
             return res.json({ message: 'Status sanggahan berhasil diperbarui' });
         })();
     } else {
@@ -1262,47 +1252,18 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
                 
                 console.log('Sanggahan status updated successfully');
                 
-                // If sanggahan is accepted, update the bantuan status based on sanggahan type
+                // Jika sanggahan diterima, set bantuan target menjadi REJECTED
                 if (status === 'accepted') {
-                    console.log('Sanggahan accepted, updating bantuan status');
+                    console.log('Sanggahan accepted, updating bantuan status to rejected');
                     
                     let targetUserId = null;
                     
                     if (sanggahan.tipe === 'diri_sendiri') {
                         targetUserId = sanggahan.pelapor_user_id;
-                        console.log('Self-sanggahan accepted, updating pelapor bantuan to approved');
+                        console.log('Self-sanggahan accepted, updating pelapor bantuan to rejected');
                     } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
                         targetUserId = sanggahan.target_user_id;
-                        console.log('Other-warga sanggahan accepted, updating target user bantuan to approved');
-                    }
-                    
-                    if (targetUserId) {
-                        db.run(`
-                            UPDATE bantuan_sosial 
-                            SET status = 'approved', rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP 
-                            WHERE user_id = ? AND (status = 'pending' OR status = 'rejected')
-                        `, [targetUserId], function(err) {
-                            if (err) {
-                                console.error('Error updating bantuan status:', err);
-                            } else {
-                                console.log('Bantuan status updated to approved:', this.changes, 'records for user:', targetUserId);
-                            }
-                        });
-                    }
-                }
-                
-                // If sanggahan is rejected, update the bantuan status based on sanggahan type
-                if (status === 'rejected') {
-                    console.log('Sanggahan rejected, updating bantuan status');
-                    
-                    let targetUserId = null;
-                    
-                    if (sanggahan.tipe === 'diri_sendiri') {
-                        targetUserId = sanggahan.pelapor_user_id;
-                        console.log('Self-sanggahan rejected, updating pelapor bantuan to rejected');
-                    } else if (sanggahan.tipe === 'warga_lain' && sanggahan.target_user_id) {
-                        targetUserId = sanggahan.target_user_id;
-                        console.log('Other-warga sanggahan rejected, updating target user bantuan to rejected');
+                        console.log('Other-warga sanggahan accepted, updating target user bantuan to rejected');
                     }
                     
                     if (targetUserId) {
@@ -1319,6 +1280,8 @@ app.put('/api/admin/sanggahan/:id/status', authenticateToken, (req, res) => {
                         });
                     }
                 }
+
+                // Jika sanggahan DITOLAK, tidak ada perubahan status bantuan
                 
                 res.json({ message: 'Status sanggahan berhasil diperbarui' });
             });

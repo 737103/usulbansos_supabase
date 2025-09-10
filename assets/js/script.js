@@ -509,6 +509,9 @@ function showAdminDashboard() {
 }
 // Admin: Kelola Sanggahan
 async function showKelolaSanggahan() {
+    // Auto-refresh halaman sanggahan tiap 30 detik
+    try { clearInterval(window.__adminAutoRefresh); } catch(_) {}
+    window.__adminAutoRefresh = setInterval(() => { try { showKelolaSanggahan(); } catch(_) {} }, 30000);
     const content = document.getElementById('admin-content');
     const token = localStorage.getItem('token');
     try {
@@ -638,7 +641,11 @@ async function updateSanggahanStatus(id, status) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Gagal update');
         showMessage('Status sanggahan berhasil diperbarui', 'success');
+        // Refresh kedua tabel agar sinkron (sanggahan dan daftar usulan bantuan)
         showKelolaSanggahan();
+        if (typeof showKelolaBantuan === 'function') {
+            try { showKelolaBantuan(); } catch(_) {}
+        }
     } catch (e) {
         console.error(e);
         showMessage('Gagal memperbarui status', 'error');
@@ -685,6 +692,9 @@ async function deleteSanggahan(id) {
 
 // Show Warga Dashboard
 function showWargaDashboard() {
+    // Auto-check perubahan status ajuan untuk warga
+    try { clearInterval(window.__wargaAutoRefresh); } catch(_) {}
+    window.__wargaAutoRefresh = setInterval(() => { try { checkWargaBantuanUpdates(); } catch(_) {} }, 30000);
     const mainContent = document.querySelector('main') || document.body;
     mainContent.innerHTML = `
         <div class="dashboard">
@@ -1505,6 +1515,9 @@ async function handleAdminSettingsSubmit(e) {
 
 // Admin: Kelola Usulan Bansos
 async function showKelolaBantuan() {
+    // Auto-refresh halaman usulan bantuan tiap 30 detik
+    try { clearInterval(window.__adminAutoRefresh); } catch(_) {}
+    window.__adminAutoRefresh = setInterval(() => { try { showKelolaBantuan(); } catch(_) {} }, 30000);
     const content = document.getElementById('admin-content');
     const token = localStorage.getItem('token');
 
@@ -2294,6 +2307,8 @@ function removeGPSPhoto() {
 
 // Show Riwayat Ajuan
 async function showRiwayatAjuan() {
+    // Jalankan cek awal agar UI menampilkan status terbaru
+    try { checkWargaBantuanUpdates(); } catch(_) {}
     const content = document.getElementById('warga-content');
     
     try {
@@ -2416,6 +2431,49 @@ function getStatusClass(status) {
         'rejected': 'rejected'
     };
     return classes[status] || 'pending';
+}
+
+// Polling helper untuk warga: deteksi perubahan status bantuan
+async function checkWargaBantuanUpdates() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const timestamp = new Date().getTime();
+        const res = await fetch(`${API_BASE_URL}/bantuan?t=${timestamp}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const list = await res.json();
+        // Deteksi perubahan status dan tampilkan notifikasi toast
+        try {
+            const storageKey = 'warga_bantuan_status_map';
+            const prevJson = localStorage.getItem(storageKey) || '{}';
+            const prevMap = JSON.parse(prevJson);
+            const nextMap = {};
+            (list || []).forEach(b => {
+                const key = String(b.id);
+                nextMap[key] = { status: b.status, reason: b.rejection_reason || null };
+                const prev = prevMap[key];
+                if (prev && prev.status !== b.status) {
+                    const label = getStatusLabel(b.status);
+                    if (b.status === 'rejected' && b.rejection_reason) {
+                        showMessage(`Status ajuan Anda berubah menjadi "${label}". Alasan: ${b.rejection_reason}`, 'warning');
+                    } else if (b.status === 'approved') {
+                        showMessage(`Selamat! Ajuan Anda telah "${label}".`, 'success');
+                    } else {
+                        showMessage(`Status ajuan Anda sekarang "${label}".`, 'info');
+                    }
+                }
+            });
+            // Simpan state terbaru untuk perbandingan berikutnya
+            localStorage.setItem(storageKey, JSON.stringify(nextMap));
+        } catch (_) {}
+        // Jika sedang berada di halaman riwayat, render ulang agar sinkron
+        const wargaContent = document.getElementById('warga-content');
+        if (wargaContent && wargaContent.querySelector('.riwayat-ajuan-table')) {
+            try { showRiwayatAjuan(); } catch(_) {}
+        }
+    } catch(_) {}
 }
 
 // Show Edit Bantuan Form
