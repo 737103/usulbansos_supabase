@@ -480,7 +480,7 @@ app.post('/api/warga/check-nik', async (req, res) => {
         });
     }
 
-    // 1) Cek di Supabase jika terkonfigurasi
+    // 1) Cek di Supabase (service role) jika tersedia
     if (supabaseAdmin) {
         try {
             const { data: user, error } = await supabaseAdmin
@@ -507,9 +507,29 @@ app.post('/api/warga/check-nik', async (req, res) => {
                 }
             }
 
-            // Jangan return di sini; lanjut cek SQLite juga untuk memastikan konsistensi
+            // Jangan return di sini; lanjut cek sumber lain untuk konsistensi
         } catch (e) {
             console.error('[check-nik] exception:', e);
+        }
+    }
+
+    // 1b) Cek di Supabase (anon) bila service role tidak tersedia namun anon ada
+    if (!supabaseAdmin && supabase) {
+        try {
+            const { data: user, error } = await supabase
+                .from('users')
+                .select('id, verified')
+                .eq('nik', nik)
+                .limit(1)
+                .maybeSingle();
+            if (!error && user) {
+                return res.status(400).json({ 
+                    message: 'NIK telah terdaftar',
+                    code: user.verified ? 'NIK_VERIFIED_EXISTS' : 'NIK_PENDING_VERIFICATION'
+                });
+            }
+        } catch (e) {
+            console.error('[check-nik][anon] exception:', e);
         }
     }
 
