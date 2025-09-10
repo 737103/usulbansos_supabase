@@ -1453,6 +1453,16 @@ section {
     line-height: 1.5;
 }
 
+/* Tampilkan seluruh teks pada kolom Alasan Penolakan agar tidak menutupi kolom lain */
+.riwayat-ajuan-table th:nth-child(5),
+.riwayat-ajuan-table td:nth-child(5) {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere;
+    max-width: 420px;
+    line-height: 1.5;
+}
+
 /* Special styling for Dokumen column */
 .table th:nth-child(5), .table td:nth-child(5) { /* Dokumen */
     min-width: 120px;
