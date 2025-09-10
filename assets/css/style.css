@@ -251,7 +251,7 @@ body {
     opacity: 0.8;
 }
 
-/* Hero Photo Banner (animated photos above title) */
+/* Hero Photo Banner (static photo above title) */
 .hero-photo-banner {
     width: 100%;
     height: 180px;
@@ -268,43 +268,25 @@ body {
     /* Force hardware acceleration for smooth animation */
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    /* Ensure proper display */
+    display: block;
+    /* Debug border to see if banner is visible */
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
-.hero-photo-track {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    width: 100%;
-    /* Remove animation for static display */
-    /* animation: heroSlide 6s ease-in-out infinite; */
-    /* will-change: transform; */
-    /* animation-fill-mode: both; */
-    /* Ensure proper positioning and visibility */
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    /* Force hardware acceleration for smooth animation */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-.hero-photo-slide {
+.hero-photo-image {
     width: 100%;
     height: 100%;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 16px;
     transform: scale(1.05);
-    flex-shrink: 0;
     transition: transform 0.3s ease;
-    /* Ensure proper display and positioning */
+    /* Ensure proper display */
     display: block;
-    position: relative;
-    /* Force hardware acceleration for smooth animation */
-    transform: scale(1.05) translateZ(0);
-    -webkit-transform: scale(1.05) translateZ(0);
 }
+
+/* Removed old track and slide CSS - now using img tag */
 
 /* Keyframes removed - using static banner */
 
@@ -323,59 +305,12 @@ body {
 }
 
 /* Additional CSS for static banner */
-.hero-photo-banner:hover .hero-photo-slide:first-child {
-    transform: scale(1.08) translateZ(0);
-    -webkit-transform: scale(1.08) translateZ(0);
+.hero-photo-banner:hover .hero-photo-image {
+    transform: scale(1.08);
     transition: transform 0.3s ease;
 }
 
-/* Static banner styling - no additional rules needed */
-
-/* Ensure slides are properly positioned */
-.hero-photo-slide:first-child {
-    background-image: url('uploads/hero1.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    /* Ensure proper display */
-    display: block;
-    width: 100%;
-    height: 100%;
-    /* Force hardware acceleration */
-    transform: scale(1.05) translateZ(0);
-    -webkit-transform: scale(1.05) translateZ(0);
-    /* Ensure proper positioning */
-    position: relative;
-    /* Ensure proper sizing */
-    min-width: 100%;
-    max-width: 100%;
-    /* Ensure proper flex behavior */
-    flex: 0 0 100%;
-    /* Ensure proper overflow handling */
-    overflow: hidden;
-    /* Ensure proper z-index */
-    z-index: 1;
-    /* Ensure proper background attachment */
-    background-attachment: scroll;
-    /* Ensure proper background origin */
-    background-origin: border-box;
-    /* Ensure proper background clip */
-    background-clip: border-box;
-    /* Ensure proper background blend mode */
-    background-blend-mode: normal;
-    /* Background properties optimized */
-    /* Ensure proper background repeat */
-    background-repeat: no-repeat;
-    /* Ensure proper background size */
-    background-size: cover;
-    /* Ensure proper background position */
-    background-position: center;
-}
-
-.hero-photo-slide:last-child {
-    /* Hide the second slide */
-    display: none;
-}
+/* Removed old slide CSS - now using img tag */
 
 /* Section Styles */
 section {
