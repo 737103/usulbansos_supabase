@@ -263,6 +263,11 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     backdrop-filter: blur(2px);
     z-index: 1;
+    /* Ensure the banner is visible and has proper dimensions */
+    min-height: 180px;
+    /* Force hardware acceleration for smooth animation */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .hero-photo-track {
@@ -270,42 +275,176 @@ body {
     inset: 0;
     display: flex;
     width: calc(100% * 2);
-    animation: heroSlide 8s ease-in-out infinite;
+    animation: heroSlide 6s ease-in-out infinite;
     will-change: transform;
+    animation-fill-mode: both;
+    /* Ensure proper positioning and visibility */
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    /* Force hardware acceleration for smooth animation */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .hero-photo-slide {
     width: 50%;
+    height: 100%;
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     transform: scale(1.05);
     flex-shrink: 0;
+    transition: transform 0.3s ease;
+    /* Ensure proper display and positioning */
+    display: block;
+    position: relative;
+    /* Force hardware acceleration for smooth animation */
+    transform: scale(1.05) translateZ(0);
+    -webkit-transform: scale(1.05) translateZ(0);
 }
 
 @keyframes heroSlide {
-    0% { transform: translateX(0%); }
-    40% { transform: translateX(0%); }
-    50% { transform: translateX(-100%); }
-    90% { transform: translateX(-100%); }
-    100% { transform: translateX(0%); }
+    0% { transform: translateX(0%) translateZ(0); }
+    30% { transform: translateX(0%) translateZ(0); }
+    35% { transform: translateX(-100%) translateZ(0); }
+    80% { transform: translateX(-100%) translateZ(0); }
+    85% { transform: translateX(0%) translateZ(0); }
+    100% { transform: translateX(0%) translateZ(0); }
 }
 
 @media (max-width: 768px) {
     .hero-photo-banner { 
         height: 150px; 
+        min-height: 150px;
     }
     .hero-photo-track {
-        animation: heroSlide 6s ease-in-out infinite;
+        animation: heroSlide 4s ease-in-out infinite;
     }
 }
 
 @media (max-width: 480px) {
     .hero-photo-banner { 
         height: 120px; 
+        min-height: 120px;
     }
     .hero-photo-track {
-        animation: heroSlide 5s ease-in-out infinite;
+        animation: heroSlide 3s ease-in-out infinite;
     }
+}
+
+/* Additional CSS to ensure animation works */
+.hero-photo-banner:hover .hero-photo-track {
+    animation-play-state: paused;
+}
+
+.hero-photo-banner:not(:hover) .hero-photo-track {
+    animation-play-state: running;
+}
+
+/* Force animation to start immediately */
+.hero-photo-track {
+    animation-delay: 0s;
+    animation-iteration-count: infinite;
+    animation-direction: normal;
+    animation-timing-function: ease-in-out;
+    /* Ensure animation starts immediately */
+    animation-fill-mode: both;
+    animation-play-state: running;
+}
+
+/* Ensure slides are properly positioned */
+.hero-photo-slide:first-child {
+    background-image: url('uploads/hero1.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* Ensure proper display */
+    display: block;
+    width: 50%;
+    height: 100%;
+    /* Force hardware acceleration */
+    transform: scale(1.05) translateZ(0);
+    -webkit-transform: scale(1.05) translateZ(0);
+    /* Ensure proper positioning */
+    position: relative;
+    float: left;
+    /* Ensure proper sizing */
+    min-width: 50%;
+    max-width: 50%;
+    /* Ensure proper flex behavior */
+    flex: 0 0 50%;
+    /* Ensure proper overflow handling */
+    overflow: hidden;
+    /* Ensure proper z-index */
+    z-index: 1;
+    /* Ensure proper background attachment */
+    background-attachment: scroll;
+    /* Ensure proper background origin */
+    background-origin: border-box;
+    /* Ensure proper background clip */
+    background-clip: border-box;
+    /* Ensure proper background blend mode */
+    background-blend-mode: normal;
+    /* Ensure proper background composite */
+    background-composite: source-over;
+    /* Ensure proper background filter */
+    background-filter: none;
+    /* Ensure proper background mask */
+    background-mask: none;
+    /* Ensure proper background repeat */
+    background-repeat: no-repeat;
+    /* Ensure proper background size */
+    background-size: cover;
+    /* Ensure proper background position */
+    background-position: center;
+}
+
+.hero-photo-slide:last-child {
+    background-image: url('uploads/hero2.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* Ensure proper display */
+    display: block;
+    width: 50%;
+    height: 100%;
+    /* Force hardware acceleration */
+    transform: scale(1.05) translateZ(0);
+    -webkit-transform: scale(1.05) translateZ(0);
+    /* Ensure proper positioning */
+    position: relative;
+    float: left;
+    /* Ensure proper sizing */
+    min-width: 50%;
+    max-width: 50%;
+    /* Ensure proper flex behavior */
+    flex: 0 0 50%;
+    /* Ensure proper overflow handling */
+    overflow: hidden;
+    /* Ensure proper z-index */
+    z-index: 1;
+    /* Ensure proper background attachment */
+    background-attachment: scroll;
+    /* Ensure proper background origin */
+    background-origin: border-box;
+    /* Ensure proper background clip */
+    background-clip: border-box;
+    /* Ensure proper background blend mode */
+    background-blend-mode: normal;
+    /* Ensure proper background composite */
+    background-composite: source-over;
+    /* Ensure proper background filter */
+    background-filter: none;
+    /* Ensure proper background mask */
+    background-mask: none;
+    /* Ensure proper background repeat */
+    background-repeat: no-repeat;
+    /* Ensure proper background size */
+    background-size: cover;
+    /* Ensure proper background position */
+    background-position: center;
 }
 
 /* Section Styles */

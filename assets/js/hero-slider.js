@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         heroSlides.forEach((slide, index) => {
             slide.style.width = '50%';
             slide.style.flexShrink = '0';
+            slide.style.height = '100%';
             console.log(`Slide ${index + 1}:`, slide.style.backgroundImage);
         });
         
@@ -22,12 +23,17 @@ document.addEventListener('DOMContentLoaded', function() {
             heroTrack.style.animationPlayState = 'running';
         });
         
-        // Force animation restart if needed
+        // Force animation restart with correct timing
         setTimeout(() => {
             heroTrack.style.animation = 'none';
             heroTrack.offsetHeight; // Trigger reflow
-            heroTrack.style.animation = 'heroSlide 8s ease-in-out infinite';
+            heroTrack.style.animation = 'heroSlide 6s ease-in-out infinite';
         }, 100);
+        
+        // Add debugging info
+        console.log('Hero track width:', heroTrack.style.width);
+        console.log('Hero track animation:', heroTrack.style.animation);
+        
     } else {
         console.warn('Hero slider elements not found');
     }
