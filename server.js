@@ -464,7 +464,7 @@ app.post('/api/warga/register', async (req, res) => {
 });
 
 // Check NIK availability
-app.post('/api/warga/check-nik', (req, res) => {
+app.post('/api/warga/check-nik', async (req, res) => {
     const { nik } = req.body;
 
     if (!nik) {
@@ -480,7 +480,38 @@ app.post('/api/warga/check-nik', (req, res) => {
         });
     }
 
-    // Check if NIK already exists
+    if (USE_SUPABASE) {
+        try {
+            if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase belum dikonfigurasi' });
+            const { data: user, error } = await supabaseAdmin
+                .from('users')
+                .select('id, verified')
+                .eq('nik', nik)
+                .limit(1)
+                .maybeSingle();
+            if (error) return res.status(500).json({ message: 'Server error' });
+
+            if (user) {
+                if (user.verified === 1 || user.verified === true) {
+                    return res.status(400).json({ 
+                        message: 'NIK telah terdaftar',
+                        code: 'NIK_VERIFIED_EXISTS'
+                    });
+                } else {
+                    return res.status(400).json({ 
+                        message: 'NIK telah terdaftar',
+                        code: 'NIK_PENDING_VERIFICATION'
+                    });
+                }
+            }
+
+            return res.json({ message: 'NIK tersedia untuk pendaftaran', code: 'NIK_AVAILABLE' });
+        } catch (_) {
+            return res.status(500).json({ message: 'Server error' });
+        }
+    }
+
+    // SQLite fallback
     db.get('SELECT id, verified FROM users WHERE nik = ?', [nik], (err, existingUser) => {
         if (err) {
             return res.status(500).json({ message: 'Server error' });
@@ -489,12 +520,12 @@ app.post('/api/warga/check-nik', (req, res) => {
         if (existingUser) {
             if (existingUser.verified === 1) {
                 return res.status(400).json({ 
-                    message: 'NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.',
+                    message: 'NIK telah terdaftar',
                     code: 'NIK_VERIFIED_EXISTS'
                 });
             } else {
                 return res.status(400).json({ 
-                    message: 'NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.',
+                    message: 'NIK telah terdaftar',
                     code: 'NIK_PENDING_VERIFICATION'
                 });
             }

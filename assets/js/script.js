@@ -299,20 +299,15 @@ async function validateNIK(e) {
             messageDiv.className = 'nik-validation-message';
             
             if (response.ok) {
-                // NIK is available
                 messageDiv.style.color = '#28a745';
                 messageDiv.innerHTML = '<i class="fas fa-check"></i> NIK tersedia untuk pendaftaran';
                 e.target.style.borderColor = '#28a745';
             } else {
-                // NIK already exists
-                if (data.code === 'NIK_VERIFIED_EXISTS') {
+                // Tampilkan pesan tunggal sesuai permintaan: "NIK telah terdaftar"
+                if (data.code === 'NIK_VERIFIED_EXISTS' || data.code === 'NIK_PENDING_VERIFICATION') {
                     messageDiv.style.color = '#dc3545';
-                    messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> NIK sudah terdaftar dan diverifikasi. Hubungi admin kelurahan.';
+                    messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> NIK telah terdaftar';
                     e.target.style.borderColor = '#dc3545';
-                } else if (data.code === 'NIK_PENDING_VERIFICATION') {
-                    messageDiv.style.color = '#ffc107';
-                    messageDiv.innerHTML = '<i class="fas fa-clock"></i> NIK sudah terdaftar, menunggu verifikasi admin.';
-                    e.target.style.borderColor = '#ffc107';
                 } else {
                     messageDiv.style.color = '#dc3545';
                     messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (data.message || 'NIK tidak tersedia');
@@ -423,10 +418,8 @@ async function handleRegister(e) {
             console.log('Registration failed:', data.message);
             
             // Handle specific error codes for NIK validation
-            if (data.code === 'NIK_VERIFIED_EXISTS') {
-                showMessage('NIK sudah terdaftar dan diverifikasi oleh admin kelurahan. Hubungi admin kelurahan untuk bantuan.', 'error');
-            } else if (data.code === 'NIK_PENDING_VERIFICATION') {
-                showMessage('NIK sudah terdaftar tetapi belum diverifikasi. Tunggu verifikasi admin atau hubungi admin kelurahan.', 'warning');
+            if (data.code === 'NIK_VERIFIED_EXISTS' || data.code === 'NIK_PENDING_VERIFICATION' || data.code === 'NIK_EXISTS') {
+                showMessage('NIK telah terdaftar', 'error');
             } else {
                 showMessage(data.message || 'Pendaftaran gagal!', 'error');
             }
