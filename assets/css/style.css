@@ -1353,9 +1353,9 @@ section {
 
 .table {
     width: 100%;
-    min-width: 800px;
+    min-width: 1100px; /* beri ruang lebih agar kolom tidak menumpuk */
     border-collapse: collapse;
-    table-layout: auto;
+    table-layout: fixed; /* paksa kolom tidak tumpang tindih; gunakan wrap */
 }
 
 .table th,
@@ -1449,8 +1449,38 @@ section {
     white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: anywhere;
-    max-width: 420px; /* beri ruang lebih agar mudah dibaca */
+    max-width: 480px; /* beri ruang lebih agar mudah dibaca */
     line-height: 1.5;
+}
+
+/* Lebar kolom tabel riwayat ajuan (desktop) */
+.riwayat-ajuan-table th:nth-child(1),
+.riwayat-ajuan-table td:nth-child(1) { /* Jenis Bantuan */
+    min-width: 120px;
+}
+.riwayat-ajuan-table th:nth-child(2),
+.riwayat-ajuan-table td:nth-child(2) { /* Alasan Pengajuan */
+    min-width: 380px;
+}
+.riwayat-ajuan-table th:nth-child(3),
+.riwayat-ajuan-table td:nth-child(3) { /* Status */
+    min-width: 110px;
+}
+.riwayat-ajuan-table th:nth-child(4),
+.riwayat-ajuan-table td:nth-child(4) { /* Tanggal Ajuan */
+    min-width: 140px;
+}
+.riwayat-ajuan-table th:nth-child(5),
+.riwayat-ajuan-table td:nth-child(5) { /* Alasan Penolakan */
+    min-width: 320px;
+}
+.riwayat-ajuan-table th:nth-child(6),
+.riwayat-ajuan-table td:nth-child(6) { /* Dokumen */
+    min-width: 160px;
+}
+.riwayat-ajuan-table th:nth-child(7),
+.riwayat-ajuan-table td:nth-child(7) { /* Aksi */
+    min-width: 160px;
 }
 
 /* Tampilkan seluruh teks pada kolom Alasan Penolakan agar tidak menutupi kolom lain */
@@ -1461,6 +1491,62 @@ section {
     overflow-wrap: anywhere;
     max-width: 420px;
     line-height: 1.5;
+    vertical-align: middle; /* rata tengah vertikal untuk alasan penolakan */
+    position: relative;
+}
+
+/* Gaya teks alasan penolakan dengan tooltip saat hover */
+.rejection-reason {
+    display: inline-block;
+    position: relative;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+
+.rejection-reason:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 6px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    white-space: normal;
+    width: max-content;
+    max-width: 80vw;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    z-index: 50;
+}
+
+/* Breakpoint kecil: perangkat 360–375px */
+@media (max-width: 375px) {
+    .riwayat-ajuan-table th:nth-child(2),
+    .riwayat-ajuan-table td:nth-child(2) {
+        max-width: 260px;
+    }
+    .riwayat-ajuan-table th:nth-child(5),
+    .riwayat-ajuan-table td:nth-child(5),
+    .rejection-reason {
+        max-width: 260px;
+    }
+}
+
+/* Breakpoint sangat kecil: hingga 320px */
+@media (max-width: 320px) {
+    .riwayat-ajuan-table th:nth-child(2),
+    .riwayat-ajuan-table td:nth-child(2) {
+        max-width: 210px;
+    }
+    .riwayat-ajuan-table th:nth-child(5),
+    .riwayat-ajuan-table td:nth-child(5),
+    .rejection-reason {
+        max-width: 210px;
+    }
 }
 
 /* Special styling for Dokumen column */
@@ -1481,6 +1567,7 @@ section {
 
 /* Responsive table improvements */
 @media (max-width: 768px) {
+    .table { min-width: 900px; }
     .table th:nth-child(4), .table td:nth-child(4) { /* Alasan Pengajuan */
         min-width: 150px;
         max-width: 200px;
@@ -2354,6 +2441,7 @@ button {
     flex-direction: column;
     gap: 0.5rem;
     min-width: 120px;
+    z-index: 1; /* pastikan tombol tidak menimpa teks di kolom lain */
 }
 
 .doc-btn {
@@ -3248,6 +3336,7 @@ button {
 }
 
 @media (max-width: 480px) {
+    .table { min-width: 820px; }
     .table th:nth-child(4), .table td:nth-child(4) { /* Alasan Pengajuan */
         min-width: 120px;
         max-width: 150px;
