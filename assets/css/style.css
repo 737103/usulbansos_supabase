@@ -262,6 +262,7 @@ body {
     background: rgba(255,255,255,0.08);
     box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     backdrop-filter: blur(2px);
+    z-index: 1;
 }
 
 .hero-photo-track {
@@ -269,29 +270,42 @@ body {
     inset: 0;
     display: flex;
     width: calc(100% * 2);
-    animation: heroSlide 10s linear infinite;
+    animation: heroSlide 8s ease-in-out infinite;
+    will-change: transform;
 }
 
 .hero-photo-slide {
-    width: 100%;
+    width: 50%;
     background-size: cover;
     background-position: center;
     transform: scale(1.05);
+    flex-shrink: 0;
 }
 
 @keyframes heroSlide {
     0% { transform: translateX(0%); }
-    45% { transform: translateX(0%); }
-    55% { transform: translateX(-100%); }
-    100% { transform: translateX(-100%); }
+    40% { transform: translateX(0%); }
+    50% { transform: translateX(-100%); }
+    90% { transform: translateX(-100%); }
+    100% { transform: translateX(0%); }
 }
 
 @media (max-width: 768px) {
-    .hero-photo-banner { height: 150px; }
+    .hero-photo-banner { 
+        height: 150px; 
+    }
+    .hero-photo-track {
+        animation: heroSlide 6s ease-in-out infinite;
+    }
 }
 
 @media (max-width: 480px) {
-    .hero-photo-banner { height: 120px; }
+    .hero-photo-banner { 
+        height: 120px; 
+    }
+    .hero-photo-track {
+        animation: heroSlide 5s ease-in-out infinite;
+    }
 }
 
 /* Section Styles */
