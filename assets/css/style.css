@@ -1354,6 +1354,10 @@ section {
     margin: 1rem 0;
 }
 
+/* Perbaikan area scroll agar tidak macet: tambahkan padding-bottom kecil
+   sehingga thumb scrollbar tidak menutup konten terakhir */
+.table-container .table { margin-bottom: 2px; }
+
 .table {
     width: 100%;
     min-width: 1100px; /* beri ruang lebih agar kolom tidak menumpuk */
@@ -1483,6 +1487,11 @@ section {
 .riwayat-ajuan-table td:nth-child(6) { /* Dokumen */
     min-width: 230px;   /* diperlebar agar tombol tidak berhimpitan */
     max-width: 280px;
+    display: flex;               /* pusatkan konten di dalam kolom */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 .riwayat-ajuan-table th:nth-child(7),
 .riwayat-ajuan-table td:nth-child(7) { /* Aksi */
@@ -2447,16 +2456,17 @@ button {
 .document-buttons {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    min-width: 120px;
+    gap: 0.4rem;
+    min-width: auto; /* biarkan selebar konten */
+    align-items: center; /* pusatkan tombol di kolom */
     z-index: 1; /* pastikan tombol tidak menimpa teks di kolom lain */
 }
 
 .doc-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+    padding: 6px 10px; /* lebih kecil, mengikuti teks */
     border-radius: 8px;
     text-decoration: none;
     font-size: 0.8rem;
@@ -2465,6 +2475,8 @@ button {
     border: 2px solid transparent;
     text-align: center;
     justify-content: center;
+    width: auto; /* jangan penuhi kolom */
+    white-space: nowrap; /* hindari teks turun baris */
 }
 
 .doc-btn:hover {
@@ -3158,15 +3170,16 @@ button {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 8px 12px;
+    padding: 6px 10px; /* kecilkan */
     font-size: 0.8rem;
     text-decoration: none;
     border-radius: 8px;
     transition: all 0.3s ease;
-    width: 100%;
+    width: auto; /* selebar konten */
     justify-content: center;
-    min-height: 36px;
+    min-height: 30px;
     box-sizing: border-box;
+    white-space: nowrap;
 }
 
 .bukti-link:hover {
@@ -3178,7 +3191,7 @@ button {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 8px 12px;
+    padding: 6px 10px; /* kecilkan */
     background: #17a2b8;
     color: white;
     border-radius: 8px;
@@ -3186,10 +3199,11 @@ button {
     font-size: 0.8rem;
     transition: all 0.3s ease;
     border: none;
-    width: 100%;
+    width: auto; /* selebar konten */
     justify-content: center;
-    min-height: 36px;
+    min-height: 30px;
     box-sizing: border-box;
+    white-space: nowrap;
 }
 
 .bukti-preview:hover {
