@@ -1346,8 +1346,11 @@ section {
     background: white;
     border-radius: 15px;
     box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: auto !important; /* paksa horizontal scroll aktif */
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* smooth scroll di iOS */
+    overscroll-behavior-x: contain;
+    touch-action: pan-x; /* memudahkan geser secara horizontal */
     margin: 1rem 0;
 }
 
@@ -1473,14 +1476,17 @@ section {
 .riwayat-ajuan-table th:nth-child(5),
 .riwayat-ajuan-table td:nth-child(5) { /* Alasan Penolakan */
     min-width: 320px;
+    display: table-cell;
+    vertical-align: middle; /* rata tengah vertikal */
 }
 .riwayat-ajuan-table th:nth-child(6),
 .riwayat-ajuan-table td:nth-child(6) { /* Dokumen */
-    min-width: 160px;
+    min-width: 230px;   /* diperlebar agar tombol tidak berhimpitan */
+    max-width: 280px;
 }
 .riwayat-ajuan-table th:nth-child(7),
 .riwayat-ajuan-table td:nth-child(7) { /* Aksi */
-    min-width: 160px;
+    min-width: 180px;
 }
 
 /* Tampilkan seluruh teks pada kolom Alasan Penolakan agar tidak menutupi kolom lain */
@@ -1504,6 +1510,8 @@ section {
     word-break: break-word;
     overflow-wrap: anywhere;
     line-height: 1.5;
+    display: inline-flex;
+    align-items: center; /* rata tengah vertikal isi badge */
 }
 
 .rejection-reason:hover::after {
