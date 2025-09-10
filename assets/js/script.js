@@ -299,9 +299,31 @@ async function validateNIK(e) {
             messageDiv.className = 'nik-validation-message';
             
             if (response.ok && (data && data.code === 'NIK_AVAILABLE')) {
-                messageDiv.style.color = '#28a745';
-                messageDiv.innerHTML = '<i class="fas fa-check"></i> NIK tersedia untuk pendaftaran';
-                e.target.style.borderColor = '#28a745';
+                // Double-check on Supabase (browser) if available
+                let isRegistered = false;
+                try {
+                    if (window.supabaseBrowser) {
+                        const { data: sbUser, error: sbErr } = await window.supabaseBrowser
+                            .from('users')
+                            .select('id, verified')
+                            .eq('nik', nik)
+                            .limit(1)
+                            .maybeSingle();
+                        if (!sbErr && sbUser) {
+                            isRegistered = true;
+                        }
+                    }
+                } catch(_) {}
+
+                if (isRegistered) {
+                    messageDiv.style.color = '#dc3545';
+                    messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> NIK telah terdaftar';
+                    e.target.style.borderColor = '#dc3545';
+                } else {
+                    messageDiv.style.color = '#28a745';
+                    messageDiv.innerHTML = '<i class=\"fas fa-check\"></i> NIK tersedia untuk pendaftaran';
+                    e.target.style.borderColor = '#28a745';
+                }
             } else {
                 // Tampilkan pesan tunggal sesuai permintaan: "NIK telah terdaftar"
                 if (data.code === 'NIK_VERIFIED_EXISTS' || data.code === 'NIK_PENDING_VERIFICATION') {
