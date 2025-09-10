@@ -399,6 +399,20 @@ app.post('/api/warga/register', async (req, res) => {
                 .maybeSingle();
             if (insertErr) {
                 console.error('[Register][Supabase] Insert error:', insertErr);
+                // Tangani duplikat unik (race condition) agar tidak 500
+                const msg = (insertErr.message || '').toLowerCase();
+                const details = (insertErr.details || '').toLowerCase();
+                const isDuplicate = insertErr.code === '23505' || msg.includes('duplicate key') || msg.includes('unique constraint');
+                if (isDuplicate) {
+                    if (details.includes('users_nik_key') || msg.includes('nik')) {
+                        return res.status(400).json({ message: 'NIK sudah terdaftar', code: 'NIK_EXISTS' });
+                    }
+                    if (details.includes('users_email_key') || msg.includes('email')) {
+                        return res.status(400).json({ message: 'Email sudah terdaftar', code: 'EMAIL_EXISTS' });
+                    }
+                    // fallback untuk duplicate lain
+                    return res.status(400).json({ message: 'Data sudah terdaftar', code: 'DUPLICATE' });
+                }
                 return res.status(500).json({ message: 'Gagal mendaftar' });
             }
             return res.json({ message: 'Pendaftaran berhasil. Akun Anda akan diverifikasi oleh admin.', userId: inserted?.id || null });
